@@ -18,3 +18,4 @@ pydantic==2.13.3
 pydantic-settings==2.14.0
 Faker==40.36.0
 PyMySQL==1.2.0
+unstructured[pdf]==0.24.1

@@ -77,12 +77,25 @@ pain-followup-demo/
 │   │   ├── event_bus.py        #   事件总线
 │   │   └── realtime.py         #   WebSocket 桥接
 │   └── knowledge/              # RAG 知识库（Chroma）
+│       ├── loader.py           #   PDF/文档加载（Unstructured 自动解析 + OCR）
+│       ├── splitter.py         #   中文分块（按标题层级 + 800字递归切分）
+│       ├── embeddings.py       #   Embedding 提供方（SiliconFlow / 本地 bge-m3）
+│       ├── store.py            #   Chroma 向量库封装
+│       ├── retriever.py        #   检索入口（指南/共识引用溯源）
+│       ├── ingest.py           #   批量入库入口
+│       └── config.py           #   RAG 配置
 ├── frontend/                   # Vue 3 + Pinia + Tailwind
 │   └── src/
 │       ├── pages/DemoPage.vue  #   主页面（三 Tab）
 │       ├── pages/ChatPage.vue  #   微信聊天页
 │       └── components/         #   审阅/对话/控制面板等
 └── knowledge_base/             # 知识库语料（不入 git）
+    ├── raw/                    # 原始 PDF 文档
+    │   ├── consensus/          #   专家共识
+    │   ├── guidelines/         #   临床指南
+    │   ├── pathways/           #   诊疗路径
+    │   └── internal/           #   内部文档
+    └── vector_store/           # Chroma 持久化目录
 ```
 
 ---
@@ -120,14 +133,29 @@ LLM 在 `engine/react_core.py` 的 `run_tool_reflect` 中持 5 个 function-call
 
 ## 五、快速开始
 
+### 前置要求
+
+- Python 3.10+
+- Node.js 18+
+
 ### 后端（端口 5000）
 
 ```bash
+# 进入后端目录
 cd pain-followup-demo/backend
-python -m venv venv && venv\Scripts\activate
-pip install -r requirements.txt
-cp .env.example .env    # 编辑 LLM_API_KEY
-python app.py
+
+# 安装 uv（统一包管理器）
+pip install uv
+
+# 安装依赖（自动创建 .venv）
+uv pip install -r requirements.txt "unstructured[pdf]"
+
+# 配置环境变量
+cp .env.example .env
+# 编辑 .env，填入 LLM_API_KEY 等配置
+
+# 运行
+uv run python app.py
 ```
 
 ### 前端（端口 3000）
@@ -136,6 +164,22 @@ python app.py
 cd pain-followup-demo/frontend
 npm install && npm run dev
 # 打开 http://localhost:3000
+```
+
+### 后续常用命令
+
+```bash
+# 后端运行
+uv run python app.py
+
+# 新增包
+uv pip install 包名
+
+# 导入 PDF 到知识库
+uv run python -m knowledge.ingest
+
+# 查看向量库状态
+uv run python -m knowledge.ingest --status
 ```
 
 ### 环境变量（.env）
@@ -151,16 +195,57 @@ DEMO_TODAY=2026-07-29        # 可选：固定演示日期
 
 ---
 
-## 六、技术栈
+## 六、RAG 知识库
+
+### 文档加载流程
+
+```
+knowledge_base/raw/*.pdf / .txt
+       │
+       ▼
+unstructured.partition.auto.partition()
+   ├── 自动识别文件类型（PDF / TXT / MD / DOCX）
+   ├── 文本型 PDF → pdfminer 提取文字
+   ├── 扫描型 PDF → OCR 识别（chi_sim+eng）
+   ├── 表格自动检测
+   └── 元素分类（Title / NarrativeText / ListItem / Table）
+       │
+       ▼
+splitter.py → 按中文标题层级切分 → 800 字/块，重叠 100 字
+       │
+       ▼
+embeddings.py → SiliconFlow API（BAAI/bge-m3）→ 1024 维向量
+       │
+       ▼
+store.py / es_store.py → Chroma 或 Elasticsearch
+```
+
+### 向量库
+
+| 类型 | 后端 | 适用场景 |
+|------|------|---------|
+| Chroma | 本地文件（默认） | 开发 / 内网 Demo，零运维 |
+| Elasticsearch | 远程 ES 8.x | 生产环境，支持 BM25+kNN 混合检索 |
+
+### 当前语料
+
+`knowledge_base/raw/` 下包含 18+ 个疼痛领域中文指南/共识 PDF（带状疱疹后神经痛、癌痛、神经病理性疼痛等），按 `consensus/` 和 `guidelines/` 子目录分类。
+
+---
+
+## 七、技术栈
 
 | 层 | 技术 |
 |---|---|
 | 后端框架 | FastAPI + Socket.IO (ASGI) |
-| LLM | OpenAI 兼容接口（DeepSeek），via LangChain |
+| LLM | OpenAI 兼容接口（DeepSeek / Qwen），via LangChain |
 | Agent 编排 | LangGraph StateGraph |
 | Function Calling | ChatOpenAI.bind_tools() |
+| 文档解析 | Unstructured（自动识别格式 + OCR） |
 | 向量库 | ChromaDB（BAAI/bge-m3 embedding） |
-| 数据库 | SQLite（`data/history.db`） |
+| Embedding | SiliconFlow API / 本地 sentence-transformers |
+| 数据库 | SQLite（`data/history.db`），计划迁移 MySQL |
+| 包管理 | uv |
 | 前端 | Vue 3 + Pinia + Tailwind CSS + Vite |
 | 实时通信 | Socket.IO (server + client) |
 
