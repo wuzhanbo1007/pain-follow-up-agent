@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" prefix="og: https://ogp.me/ns#">
+  <head>
+    <meta charset="utf-8" />
+<noscript><style>form.antibot * :not(.antibot-message) { display: none !important; }</style>
+</noscript><link rel="canonical" href="https://www.cochrane.org/evidence/CD011959_statins-chronic-obstructive-pulmonary-disease-copd" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="Generator" content="Drupal 10 (https://www.drupal.org)" />
+<meta name="MobileOptimized" content="width" />
+<meta name="HandheldFriendly" content="true" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<script type="application/ld+json">{
+    "@context": "https://schema.org",
+    "@graph": [
+        {
+            "@type": "MedicalScholarlyArticle",
+            "headline": "Statins for chronic obstructive pulmonary disease (COPD)",
+            "image": {
+                "@type": "ImageObject",
+                "representativeOfPage": "False",
+                "url": "https://www.cochrane.org/sites/all/themes/zen_cochrane/images/cochrane_logo_400.jpg",
+                "width": "400",
+                "height": "400"
+            },
+            "datePublished": "2019-07-31T13:00:00+0100",
+            "dateModified": "2025-06-19T14:35:47+0100",
+            "isAccessibleForFree": "True",
+            "author": {
+                "@type": "NGO",
+                "@id": "https://www.cochrane.org/",
+                "name": "Cochrane",
+                "url": "https://www.cochrane.org/",
+                "logo": {
+                    "@type": "ImageObject",
+                    "representativeOfPage": "True",
+                    "url": "https://www.cochrane.org/sites/all/themes/zen_cochrane/images/cochrane_logo_400.jpg",
+                    "width": "400",
+                    "height": "400"
+                }
+            },
+            "publisher": {
+                "@type": "Corporation",
+                "@id": "https://www.cochranelibrary.com/",
+                "name": "Cochrane Library",
+                "url": "https://www.cochranelibrary.com/"
+            }
+        }
+    ]
+}</script>
+<link rel="icon" href="/assets/img/colors/favicon-128-purple.png" type="image/png" />
+<link rel="alternate" hreflang="en" href="https://www.cochrane.org/evidence/CD011959_statins-chronic-obstructive-pulmonary-disease-copd" />
+<link rel="alternate" hreflang="es" href="https://www.cochrane.org/es/evidence/CD011959_statins-chronic-obstructive-pulmonary-disease-copd" />
+<link rel="alternate" hreflang="fa" href="https://www.cochrane.org/fa/evidence/CD011959_statins-chronic-obstructive-pulmonary-disease-copd" />
+<link rel="alternate" hreflang="fr" href="https://www.cochrane.org/fr/evidence/CD011959_statins-chronic-obstructive-pulmonary-disease-copd" />
+<link rel="alternate" hreflang="ru" href="https://www.cochrane.org/ru/evidence/CD011959_statins-chronic-obstructive-pulmonary-disease-copd" />
+<link rel="alternate" hreflang="hr" href="https://www.cochrane.org/hr/evidence/CD011959_statins-chronic-obstructive-pulmonary-disease-copd" />
+<link rel="alternate" hreflang="ms" href="https://www.cochrane.org/ms/evidence/CD011959_statins-chronic-obstructive-pulmonary-disease-copd" />
+<link rel="alternate" hreflang="zh-hant" href="https://www.cochrane.org/zh-hant/evidence/CD011959_statins-chronic-obstructive-pulmonary-disease-copd" />
+<link rel="alternate" hreflang="zh-hans" href="https://www.cochrane.org/zh-hans/evidence/CD011959_statins-chronic-obstructive-pulmonary-disease-copd" />
+
+    <title>Statins for chronic obstructive pulmonary disease (COPD) | Cochrane</title>
+    <style>@font-face{font-family:'Source Sans Pro';font-style:italic;font-weight:400;font-display:swap;src:url(/themes/custom/cochrane_hs/css/fonts/l-i-400.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}@font-face{font-family:'Source Sans Pro';font-style:normal;font-weight:400;font-display:swap;src:url(/themes/custom/cochrane_hs/css/fonts/l-n-400.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}@font-face{font-family:'Source Sans Pro';font-style:normal;font-weight:600;font-display:swap;src:url(/themes/custom/cochrane_hs/css/fonts/l-n-600.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}@font-face{font-family:'Source Sans Pro';font-style:normal;font-weight:700;font-display:swap;src:url(/themes/custom/cochrane_hs/css/fonts/l-n-700.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}</style>
+
+    <style id="critical-css">@font-face{font-family:'Arial adjusted';src:local('Arial');size-adjust:95%;}h1,h2,h3,h4,h5,h6,.h4,.h5,.h6{line-height:1.2;font-weight:700;letter-spacing:-.01em;color:#002D64;margin-top:0;}h1{line-height:1.166;letter-spacing:-.015em;font-size:2.25rem;margin:.67em 0;}h2{line-height:1.2;font-size:1.8rem;}h3{line-height:1.3;letter-spacing:-.005em;font-size:1.4rem;}h4{line-height:1.3;letter-spacing:-.005em;font-size:1.25rem;font-weight:700;}.h5{line-height:1.4;letter-spacing:unset;font-weight:600;font-size:1.125rem;}.h6,h6{line-height:1.4;letter-spacing:unset;font-weight:600;font-size:1rem;}h3+h4{margin-top:-1rem;}@media (min-width:70em) and (min-height:40em){h1{font-size:3rem}h2{font-size:1.8rem}h3{font-size:1.4rem}h4{font-size:1.25rem}.h5{font-size:1.125rem}.h6,h6{font-size:1rem}}.visually-hidden{position:absolute!important;overflow:hidden;clip:rect(1px,1px,1px,1px);width:1px;height:1px;word-wrap:normal;}html{line-height:1.15;-webkit-text-size-adjust:100%;}body{margin:0;font-family:"Source Sans Pro","Arial adjusted",sans-serif;line-height:1.55;font-weight:400;--scrollbar:20px;}main{display:block;}a{background-color:transparent;color:#962d91;text-decoration-thickness:.1em;text-decoration-thickness:1px;-webkit-text-decoration-skip:ink;text-decoration-skip-ink:auto;}a img{border:0;}img{border-style:none;display:block;max-width:100%;height:auto;width:auto;}button,input{font-family:inherit;font-size:100%;line-height:1.15;margin:0;overflow:visible;}button{text-transform:none;}[type=submit],button{-webkit-appearance:button;}[type=submit]::-moz-focus-inner,button::-moz-focus-inner{border-style:none;padding:0;}[type=submit]:-moz-focusring,button:-moz-focusring{outline:ButtonText dotted 1px;}[type=checkbox]{box-sizing:border-box;padding:0;}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit;}html{position:relative;-webkit-text-decoration-skip:ink;text-decoration-skip-ink:auto;font-size:100%;-webkit-font-smoothing:antialiased;}@media (max-width:320px){html{font-size:90%}}@media (min-width:50em) and (min-height:20em){html{font-size:100%}}@media (min-width:100em) and (min-height:40em){html{font-size:115%}}@media (min-width:115em) and (min-height:50em){html{font-size:120%}}@media screen{body{background:#f0f0f0;color:#1c2836}html{background:#f0f0f0;scroll-padding-top:6.5rem}}:where(h2,h3,h4,h5,h6):where(:not(:first-child)){margin:4rem 0 1.5rem;}p{margin:0 0 1.5em;}i{font-style:normal;}li{margin-bottom:.5rem;}ul{margin:0 0 1.5rem;padding-inline-start:1.5em;}:where(ul){list-style-type:square;}ol{margin:0 0 1.5rem;padding-inline-start:2em;}:where(ul,ol) ul{margin:.75rem 0 0;}nav{line-height:1.166;}nav ul{list-style:none;padding:0;}nav a{text-decoration:none;}.visually-hidden{display:block;position:absolute;left:-9999em;clip:rect(0 0 0 0);}input[type=text]{width:100%;max-width:15em;font-size:1.1em;padding:.2em .5em;line-height:1.55;background:#dee5ee;color:#1c2836;border:0;box-sizing:border-box;border-radius:.2rem;box-shadow:none;-webkit-appearance:none;-moz-appearance:none;appearance:none;}label{display:block;}.grid,[class^=grid]{display:flex;flex-wrap:wrap;padding:0;margin:0-.75rem;}.grid>*,[class^=grid]>*{list-style-type:none;box-sizing:border-box;width:100%;padding:0 .75rem;}.grid:after,.grid:before,[class^=grid]:after,[class^=grid]:before{display:none;}[class^=col-]{display:block;float:left;clear:none;}[class^=grid] [class^=col-]{clear:none!important;}@media (min-width:20rem){.col-3\/5\@mobile{width:60%}.col-full\@mobile{width:100%}}@media (min-width:35rem){.col-1\/4\@mobilewide{width:25%}}@media (min-width:47.5rem){.col-1\/4\@tablet{width:25%}.col-3\/4\@tablet{width:75%}}@media (min-width:55rem){.col-1\/3\@tabletwide{width:33.3323333333%}.col-2\/3\@tabletwide{width:66.6656666667%}.col-1\/5\@tabletwide{width:20%}.col-4\/5\@tabletwide{width:80%}.nav-site__logo img{width:calc(100% - 1rem)}#nav-site>ul{margin-bottom:0}#block-cochrane-hs-breadcrumbs,.page-title{padding-left:2rem;padding-right:2rem}#node-languages .inner{padding-left:2rem;padding-right:2rem}html #nav-site-search{right:3rem}}@media (min-width:85rem){.col-3\/11\@desktop{width:27.2717272727%}.col-2\/13\@desktop{width:15.3836153846%}.col-9\/13\@desktop{width:69.2297692308%}.col-11\/13\@desktop{width:84.6143846154%}.offset-2\/13\@desktop{margin-left:15.3836153846%}.offset-reverse-2\/13\@desktop{margin-right:15.3836153846%}[dir=rtl] .offset-2\/13\@desktop{margin-left:unset;margin-right:15.3836153846%}.masthead .masthead-bkg:before{background-size:75vw auto}.masthead .masthead-bkg:after{background-size:75vw auto}.wrap{padding-left:2rem;padding-right:2rem}#nav-site .nav-site__list{margin-left:2rem;margin-right:2rem;padding-left:0;padding-right:0}#nav-site .nav-site__sublist{padding-left:0;padding-right:0}html #nav-site-search{width:25%}#main-search-submit{display:block;position:absolute;top:0;right:0;padding:0;margin:0;background:url(/themes/custom/cochrane_hs/img/icon-search.png) 50%;background-repeat:no-repeat;width:2.1rem;height:2.1rem;background-repeat:no-repeat;border-radius:0;overflow:hidden;text-indent:99px}}body,html{position:static;}main{position:relative;z-index:1;}main:after{content:"";display:table;clear:both;}.wrap{margin:0 auto;padding:0 1.125rem;max-width:100rem;}@media (min-width:100rem){.wrap{padding:0 2rem}}.hidden{display:none!important;}#main-content{position:relative;z-index:30;}[dir=rtl] #main-content p{text-align:justify;}.panel--white{background:#fff;}.list--inline{list-style:none;padding-inline-start:0;}.list--inline>li{display:inline-block;}.list--inline>li:not(last-child){margin-right:.125rem;}.list--buttons{list-style:none;padding-inline-start:0;}.list--buttons>li{display:inline-block;}.list--buttons>li:not(last-child){margin-right:.25rem;}.list--buttons>li a,.list--buttons>li a:visited{padding:.25rem .55rem;background:#59779b;color:#fff;font-size:.9em;border-radius:.3rem;font-weight:400;text-decoration:none;}.list--buttons>li a.list--button-outline,.list--buttons>li a:visited.list--button-outline{background:0 0;color:#1c2836;box-shadow:inset 0 0 0 2px #002d64;}.list--spaced>li{padding-top:.5rem;padding-bottom:.5rem;}.list--spaced.list--inline>li:not(last-child){margin-right:1rem;}.button{position:relative;display:inline-flex;vertical-align:baseline;margin:0 .25rem 1rem 0;border:0;font-family:inherit;font-size:inherit;font-weight:500;line-height:1.166;text-decoration:none;box-sizing:border-box;text-decoration:none;font-size:.825rem;font-weight:500;padding:2rem 2.5rem .75rem .75rem;border-radius:.5rem;background:#962d91;background-image:linear-gradient(135deg,#962d91 20%,#962d91 50%,#6f216b 50%,#6f216b 75%,#481545 95%);background-size:300% 100%;background-position:left center;color:#fff;color:#fff;width:100%;max-width:17em;letter-spacing:.025rem;line-height:1.3;}.button:after{content:"";position:absolute;bottom:.75rem;right:.75rem;display:block;width:1rem;height:1rem;background:url(/themes/custom/cochrane_hs/img/arrow-white.svg) center center/contain no-repeat;}.button--blue{background:#002d64;background-image:linear-gradient(135deg,#002d64 20%,#002d64 50%,#001631 50%,#001631 75%,#000 95%);background-size:300% 100%;background-position:left center;color:#fff;}input[type=submit]:not([class^=button]){position:relative;display:inline-flex;vertical-align:baseline;margin:0 .25rem 1rem 0;border:0;font-family:inherit;font-size:inherit;font-weight:500;line-height:1.166;text-decoration:none;box-sizing:border-box;text-decoration:none;font-size:.825rem;font-weight:500;padding:2rem 2.5rem .75rem .75rem;border-radius:.5rem;background:#962d91;background-image:linear-gradient(135deg,#962d91 20%,#962d91 50%,#6f216b 50%,#6f216b 75%,#481545 95%);background-size:300% 100%;background-position:left center;color:#fff;color:#fff;width:100%;max-width:17em;letter-spacing:.025rem;line-height:1.3;}input[type=submit]:not([class^=button]):after{content:"";position:absolute;bottom:.75rem;right:.75rem;display:block;width:1rem;height:1rem;background:url(/themes/custom/cochrane_hs/img/arrow-white.svg) center center/contain no-repeat;}input[type=submit]{padding:2rem .75rem .75rem;}:where(aside){font-size:.9rem;position:relative;color:#4c5560;}:where(aside){font-size:.75em;position:relative;color:#4c5560;}@media (min-width:70em){:where(aside){font-size:.825em}.masthead .breadcrumbs{font-size:.825em}#node-languages{font-size:.825em}}:where(aside):after{content:"";width:1px;position:absolute;top:0;bottom:0;left:-.5rem;box-shadow:-1px 0 0 0silver;}:where(aside) h6{color:#1c2836;margin:0;}:where(aside)>:last-child{margin-bottom:0;}[dir=rtl] aside:after{left:unset;right:-.5rem;}.siteHeader__tools{background:#1c2836;color:#fff;border-bottom:.75rem solid #fff;font-size:.75rem;}.siteHeader__tools .wrap{max-width:unset;}.siteHeader__tools ul{margin:0;}.siteHeader__tools a,.siteHeader__tools a:visited{color:#fff;font-weight:300;}#nav-lang{display:inline-block;}#nav-lang li,#nav-lang ul{margin-bottom:0;}#nav-lang a,#nav-lang a:visited{text-decoration:none;font-weight:300;}#nav-site-secondary{text-align:right;}#nav-site-secondary ul{position:relative;right:-2rem;margin:0;}#nav-site-secondary li{display:inline-block;margin:0;}#nav-site-secondary a,#nav-site-secondary a:visited{display:inline-block;background:#962d91;color:#fff;padding:.65rem 2rem;font-weight:400;}#nav-site-secondary li:first-child a,#nav-site-secondary li:first-child a:visited{background:#002d64;}[dir=rtl] #nav-site-secondary{text-align:left;}[dir=rtl] #nav-site-secondary ul{right:unset;left:-2rem;}.siteHeader__bar{background:#fff;padding:.75rem 0;position:-webkit-sticky;position:sticky;top:0;z-index:50;}.siteHeader__bar:after{position:absolute;bottom:-8px;left:0;right:0;width:100%;height:8px;background:rgba(0,0,0,.05);box-shadow:inset 0 1px 0 rgba(0,0,0,.1);z-index:40;}.siteHeader__bar .wrap{background:#fff;}.nav-site__logo img{width:100%;max-width:11rem;}.nav-site__logo a{display:inherit;}#nav-site{margin-top:0;}#nav-site a{display:block;}#nav-site ul{list-style:none;}#nav-site ul li{margin-bottom:0;}#nav-site ul li:not(:last-child){margin-right:1.5rem;}#nav-site .nav-site__list{position:relative;}#nav-site .nav-site__list.submenu{padding-bottom:2.8rem;}#nav-site .nav-site__list>li>a{padding-bottom:.5rem;}#nav-site .nav-site__sublist>li>a{padding-top:.5rem;}#nav-site .nav-site__sublist{font-size:1rem;}#nav-site .nav-site__sublist a{white-space:nowrap;}#nav-site .nav-site__sublist a,#nav-site .nav-site__sublist a:visited{color:#962d91;padding-top:.2em;padding-bottom:.2em;}#nav-site .nav-site__sublist a:hover{color:#002d64;}#nav-site .nav-site__list a.active{font-weight:600;}#nav-site .nav-site__list a:hover{color:#962d91;}#nav-site .nav-site__sublist a.active{font-weight:600;}.siteHeader__tools{position:relative;min-height:1.9rem;}.hidden{display:none;}*[dir=rtl] .nav-site__button,*[dir=rtl] .nav-site-search__button{right:unset;left:1rem;}.nav-site-search__button,.nav-site__button{display:block;width:1em;height:1em;cursor:pointer;border:0;border-radius:0;background:#fff;background:url("/themes/custom/cochrane_hs/img/icon-search.png") 50% 50% no-repeat;background-size:contain;position:absolute;top:1.3rem;right:1rem;}.nav-site-search__button[aria-expanded=true],.nav-site__button[aria-expanded=true]{background:url("/themes/custom/cochrane_hs/img//icon-close.png") 50% 50% no-repeat;background-size:contain;}.nav-site-search__button:focus,.nav-site__button:focus{box-shadow:none!important;}.nav-site__button{background:url("/themes/custom/cochrane_hs/img/icon-menu.png") 50% 50% no-repeat;background-size:contain;}.nav-site__button.visible + .nav-site-search__button.visible{right:3rem;}.nav-site-search__button,.nav-site__button{z-index:2;}@media (min-width:55rem){#nav-site:not(.mobile) ul li{display:inline-block}.nav-site__button.visible+.nav-site-search__button.visible{right:4rem}#nav-site:not(.mobile) .nav-site__sublist{position:absolute;top:1.9rem;left:0;border-top:1px solid #002d64;padding-left:0;margin-top:5px;width:100%;margin-bottom:0}#nav-site:not(.mobile) .nav-site__list{margin-top:.6rem;margin-bottom:.6rem}#nav-site:not(.mobile) .nav-site__list.submenu{margin-top:0;margin-bottom:0;display:block}#nav-site:not(.mobile) .nav-site__list a.active{border-bottom:5px solid #002d64}#nav-site:not(.mobile) .nav-site__sublist a.active{border-bottom:3px solid #962d91}.nav-site__button.visible+.nav-site-search__button.visible{right:4rem}.nav-site__button,.nav-site-search__button{right:2rem}*[dir=rtl] .nav-site__button,*[dir=rtl] .nav-site-search__button{right:unset;left:2rem}}@media (max-width:55rem){#nav-site:not(.mobile) .nav-site__list{padding-top:2rem}#nav-site:not(.mobile) .nav-site__sublist{margin:0 0 .75em 0}}.page-title{margin-bottom:1rem;}.page-title h1{margin:0;}.breadcrumbs{list-style:none;padding-inline-start:0;margin-top:1rem;margin-bottom:.65rem;}.breadcrumbs>li{display:inline-block;color:#fff;font-weight:300;}.breadcrumbs>li:after{padding-left:1rem;content:"/";}.breadcrumbs>li:not(last-child){margin-right:1rem;}.breadcrumbs a,.breadcrumbs a:visited{color:#fff;font-weight:300;font-size:.85rem;}[dir=rtl] .breadcrumbs>li::after{padding-left:0;padding-right:1rem;}.masthead{z-index:25;background:#1c2836;background:linear-gradient(90deg,#002d64 0,#5f307d 100%);position:relative;}.masthead:before{content:"";position:absolute;z-index:-1;top:0;right:0;bottom:0;left:0;background:linear-gradient(180deg,#1c2836 -5rem,rgba(28,40,54,0) 100%);}.masthead .masthead-bkg{position:relative;}.masthead .masthead-bkg:after,.masthead .masthead-bkg:before{content:"";position:absolute;z-index:-1;top:0;right:0;bottom:0;left:0;}.masthead .masthead-bkg:before{background:url(/themes/custom/cochrane_hs/img/masthead01.png) top left no-repeat;background-size:85rem auto;}.masthead .masthead-bkg:after{background:url(/themes/custom/cochrane_hs/img/masthead02.png) bottom right no-repeat;background-size:75rem auto;}.masthead .breadcrumbs{font-size:.75em;}.masthead .breadcrumbs>li{color:#fff;}.masthead .breadcrumbs a,.masthead .breadcrumbs a:visited{color:#fff;}.visually-hidden{position:absolute!important;clip:rect(1px 1px 1px 1px);clip:rect(1px,1px,1px,1px);overflow:hidden;height:1px;}body #block-cochrane-hs-content{margin-top:2em;margin-bottom:2em;}body.node #block-cochrane-hs-content{margin-top:0;margin-bottom:0;}.wrap{padding:0;}#block-cochrane-hs-breadcrumbs,.page-title{padding-left:0;padding-right:0;}input[type=submit]{margin-top:1em;margin-bottom:1em;}input[type=submit]:not([class^=button])::after{display:none;}input[type=submit]:not([class^=button]){padding:1em 2em;width:auto;font-size:1.1rem;}time{white-space:nowrap;}html .grid{margin:0;}html .grid .grid{margin:0-.75rem;}html body{line-height:1.4;}.list--buttons>li a,.list--buttons>li a:visited{font-size:1rem;}html .button{font-size:1rem;}html{font-size:120%;}html[dir=rtl] #nav-site-secondary ul{left:0;right:auto;}html[dir=rtl] #nav-site ul li:first-child{margin-right:0;}html[dir=rtl] #nav-site ul li:last-child{margin-right:1.5rem;}html[dir=rtl] .authors{direction:ltr;}html[dir=rtl] .visually-hidden{left:auto;right:-9999em;}#nav-site{margin-top:0;}#nav-site a{display:block;}#nav-site ul{list-style:none;}#nav-site ul li{margin-bottom:0;}#nav-site ul li:not(:last-child){margin-right:1.5rem;}#nav-site .nav-site__list{position:relative;}#nav-site .nav-site__list.submenu{padding-bottom:2.8rem;}#nav-site .nav-site__list>li>a{padding-bottom:.5rem;}#nav-site .nav-site__sublist>li>a{padding-top:.5rem;}#nav-site .nav-site__sublist{font-size:1rem;}#nav-site .nav-site__sublist a{white-space:nowrap;}#nav-site .nav-site__sublist a,#nav-site .nav-site__sublist a:visited{color:#962d91;padding-top:.2em;padding-bottom:.2em;}#nav-site .nav-site__list a.active{font-weight:600;}.siteHeader__tools{position:relative;min-height:1.9rem;}.hidden{display:none;}html #nav-site-search{max-width:100%;z-index:1;}#nav-site-search .nav-site-search__inputGroup{position:relative;}#main-search-query{padding-right:2.1rem;}#main-search-submit{display:none;}#search-results{max-height:0;overflow:hidden;will-change:max-height;}.search-filter-button{display:inline;border:0;border-radius:10px;padding:.2rem 1rem;color:#fff;background-color:#962d91;font-size:.9rem;}.search-close-button{color:#962d91;font-size:.9rem;background:#fff;border:0;float:right;border-radius:10px;padding:.2rem 1rem;}.filter-svg{fill:#fff;width:16px;height:16px;margin-bottom:-2px;}.gcse-filters-wrapper{max-width:700px;position:relative;padding-top:5px;}.gcse-filters h3,.gcse-filters h4{margin-bottom:0;margin-top:.5rem;}.gcse-filters h3{margin-top:0;}.gcse-filters{border:2px dashed #962d91;padding:1rem;margin-top:calc(.2rem + 5px);display:none;}.gcse-filters label{display:inline;padding-left:.2em;margin-right:2rem;}.gcse-filters input{margin-left:1rem;}html .breadcrumbs>li::after{content:"»";padding-left:.5rem;}html .breadcrumbs>li{margin-right:.5rem;}html .list--buttons{line-height:2;}a.external:not(.button){padding-right:16px;background-image:url(/assets/img/external-link.png);background-repeat:no-repeat;background-position:right 3px center;}a.external.button::after{background-color:#fff;mask-image:url(/assets/img/external-link.svg);}.no-bg .page-title h1{font-size:2.2rem;}div:not(.masthead-bkg)>.wrap .page-title{margin:3rem 0;}.review-info{margin-bottom:2rem;}.authors{list-style-type:none;margin:0;padding:0;}.authors li{display:inline;}.authors li::after{display:inline;content:",";}.authors li:last-child::after{display:none;content:"";}.review-info aside>div{margin-bottom:2rem;}#review h6.label{margin-bottom:.5rem;}#review{margin-bottom:3rem;}#node-languages{background:#dee5ee;padding:.6rem 0;font-size:.75em;}#node-languages>.wrap{padding-top:.7rem;padding-bottom:.7rem;}#node-languages *{margin-bottom:0;}#node-languages a{display:block;line-height:1;}main #node-languages{margin-bottom:2.5rem;position:relative;}#node-languages h3{font-size:1rem;}html .siteHeader__tools>.wrap{padding-right:0;}html .siteHeader__tools>.wrap>.grid>*{padding-right:0;}html #nav-site-secondary{display:none;}@media (max-width:54.999em){html #nav-site-secondary{position:absolute;right:0;top:100%;z-index:99}}#nav-site-secondary li{position:relative;}html #nav-site-secondary ul{right:0;white-space:nowrap;}html #nav-site-secondary a,html #nav-site-secondary a:visited{padding:.65em 2em;}html #nav-site-secondary a.link-clib,html #nav-site-secondary a.link-clib:visited{display:inline-block;background:#962d91;color:#fff;font-weight:400;position:relative;}html #nav-site-secondary a.link-login,html #nav-site-secondary a.link-login:visited{background:#002d64;}html #nav-site-secondary a.link-clib::after{content:"►";display:block;position:absolute;top:0;right:.6em;line-height:2.5em;}#nav-lang .list--spaced>li{padding-top:0;padding-bottom:0;}#nav-lang .list--spaced>li a{padding-top:.5rem;padding-bottom:.5rem;display:inline-block;}html #nav-lang .language-more ul{white-space:nowrap;}html #nav-lang .language-more .more-info{display:none;}@media (min-width:55em){#review .review-groups{margin-left:2rem;margin-right:2rem}.region-header{display:table}#block-cochrane-hs-languageswitchercachefix{display:table-cell}html #nav-site-secondary{display:table-cell}html #nav-lang .language-more .more-info{display:inline-block}}html #close-languages,html #open-languages{padding-top:.1em;padding-bottom:.1em;}.nav-site__logo{position:relative;}#nav-lang{display:table;}#nav-lang .inner{display:table-row;}#nav-lang .inner>div{display:table-cell;}#nav-lang .language-list ul{max-height:2em;overflow:hidden;}#nav-lang ul li,#nav-lang ul li a{white-space:nowrap;}html[dir=rtl] #nav-site-search{right:auto;left:0;}html[dir=rtl] #nav-site-secondary{right:auto;left:0;}#cookienotice{display:none;position:fixed;background-color:#002d64;width:100%;color:#fff;bottom:0;z-index:9999;max-height:100%;overflow-y:auto;}#cookienotice h4{color:#fff;}#cookienotice .inner{max-width:960px;margin:1em auto;box-sizing:border-box;padding:0 1em;}#cookienotice a{color:#fff;text-decoration:underline;}#cookienotice a.external{background-position:right 3px center;background-repeat:no-repeat;padding-right:16px;background-image:url(/assets/img/external-link-white.png);}#cookienotice h4{margin:.5em 0;}#cookienotice .cookieslist{display:none;padding-left:1em;}#cookienotice .cookieslist li{list-style-type:none;}#cookienotice .accept_all,#cookienotice .accept_selected,#cookienotice .configure{display:inline-block;background-color:#962d91;border:2px solid #962d91;padding:.3em 1em;margin:0 1px;border-radius:10px;}#cookienotice .accept_selected,#cookienotice .configure{background:0 0;}#cookienotice .hidden{display:none;}#cookienotice label{font-weight:400;display:inline;}#cookienotice label .label{font-weight:600;}#cookienotice label .description{display:block;padding-left:2em;}#cookienotice input[type=checkbox]{display:inline;visibility:visible;}#cookienotice label::before{display:none;}#nav-site-search{position:absolute;right:0;width:414px;}
+</style>
+<link rel="stylesheet" media="print" href="/sites/default/files/css/css_u7ntuckuiGI7TL9JHUEwvAHygCFYmkXoP-OPpA3GMqc.css?delta=0&amp;language=en&amp;theme=cochrane_hs&amp;include=eJxNzDESwyAMBMAPEfMkjay5CfYAwpwo-H1SutxmlUTI1W9Y-MxGHoE2JHxIQ1_J3MrUDinM3-qn1g9jVzDdz8Lcsi7RFW7eRkUgv5G4-e_yqcQP3scqcA" data-onload-media="all" onload="this.onload=null;this.media=this.dataset.onloadMedia" />
+<noscript><link rel="stylesheet" media="all" href="/sites/default/files/css/css_u7ntuckuiGI7TL9JHUEwvAHygCFYmkXoP-OPpA3GMqc.css?delta=0&amp;language=en&amp;theme=cochrane_hs&amp;include=eJxNzDESwyAMBMAPEfMkjay5CfYAwpwo-H1SutxmlUTI1W9Y-MxGHoE2JHxIQ1_J3MrUDinM3-qn1g9jVzDdz8Lcsi7RFW7eRkUgv5G4-e_yqcQP3scqcA" />
+</noscript><link rel="stylesheet" media="print" href="/sites/default/files/css/css_9A3o2zsUIGyYseiLl-1MCb83Jx3YpqPvSMoxoyfaihg.css?delta=1&amp;language=en&amp;theme=cochrane_hs&amp;include=eJxNzDESwyAMBMAPEfMkjay5CfYAwpwo-H1SutxmlUTI1W9Y-MxGHoE2JHxIQ1_J3MrUDinM3-qn1g9jVzDdz8Lcsi7RFW7eRkUgv5G4-e_yqcQP3scqcA" data-onload-media="all" onload="this.onload=null;this.media=this.dataset.onloadMedia" />
+<noscript><link rel="stylesheet" media="all" href="/sites/default/files/css/css_9A3o2zsUIGyYseiLl-1MCb83Jx3YpqPvSMoxoyfaihg.css?delta=1&amp;language=en&amp;theme=cochrane_hs&amp;include=eJxNzDESwyAMBMAPEfMkjay5CfYAwpwo-H1SutxmlUTI1W9Y-MxGHoE2JHxIQ1_J3MrUDinM3-qn1g9jVzDdz8Lcsi7RFW7eRkUgv5G4-e_yqcQP3scqcA" />
+</noscript><link rel="stylesheet" media="print" href="/sites/default/files/css/css_ajSQONz6CDeaDDW88VWOkcLgvT3ZqHfeh5kVfMjGAq4.css?delta=2&amp;language=en&amp;theme=cochrane_hs&amp;include=eJxNzDESwyAMBMAPEfMkjay5CfYAwpwo-H1SutxmlUTI1W9Y-MxGHoE2JHxIQ1_J3MrUDinM3-qn1g9jVzDdz8Lcsi7RFW7eRkUgv5G4-e_yqcQP3scqcA" />
+<link rel="stylesheet" media="print" href="/sites/default/files/css/css_zLhn-S3SMWGEyMR11kO6ypf5QTcEaJI-ugcA_fHKeug.css?delta=3&amp;language=en&amp;theme=cochrane_hs&amp;include=eJxNzDESwyAMBMAPEfMkjay5CfYAwpwo-H1SutxmlUTI1W9Y-MxGHoE2JHxIQ1_J3MrUDinM3-qn1g9jVzDdz8Lcsi7RFW7eRkUgv5G4-e_yqcQP3scqcA" data-onload-media="all" onload="this.onload=null;this.media=this.dataset.onloadMedia" />
+<noscript><link rel="stylesheet" media="all" href="/sites/default/files/css/css_zLhn-S3SMWGEyMR11kO6ypf5QTcEaJI-ugcA_fHKeug.css?delta=3&amp;language=en&amp;theme=cochrane_hs&amp;include=eJxNzDESwyAMBMAPEfMkjay5CfYAwpwo-H1SutxmlUTI1W9Y-MxGHoE2JHxIQ1_J3MrUDinM3-qn1g9jVzDdz8Lcsi7RFW7eRkUgv5G4-e_yqcQP3scqcA" />
+</noscript>
+    
+  </head>
+  <body class="node type-review lang-en env-prod">
+        <a href="#main-content" class="visually-hidden focusable">
+      Skip to main content
+    </a>
+    
+      <div class="dialog-off-canvas-main-canvas" data-off-canvas-main-canvas>
+    <header class="siteHeader__tools">
+  <div class="wrap">
+    <div class="grid">
+                          <div class="region-header">
+    <div class="language-switcher-language-url" id="block-cochrane-hs-languageswitchercachefix">
+  
+    
+        <!-- languages -->
+    <nav class="nav-languages" id="nav-lang" role="menu">
+    <div class="inner">
+      <div class="language-list">
+        <ul class="links list--inline list--spaced"><li hreflang="en" data-drupal-link-system-path="node/10605" class="is-active" aria-current="page"><a href="/evidence/CD011959_statins-chronic-obstructive-pulmonary-disease-copd" class="language-link is-active" hreflang="en" data-drupal-link-system-path="node/10605" aria-current="page">English</a></li><li hreflang="es" data-drupal-link-system-path="node/10605"><a href="/es/evidence/CD011959_statins-chronic-obstructive-pulmonary-disease-copd" class="language-link" hreflang="es" data-drupal-link-system-path="node/10605">Español</a></li><li hreflang="fa" data-drupal-link-system-path="node/10605"><a href="/fa/evidence/CD011959_statins-chronic-obstructive-pulmonary-disease-copd" class="language-link" hreflang="fa" data-drupal-link-system-path="node/10605">فارسی</a></li><li hreflang="fr" data-drupal-link-system-path="node/10605"><a href="/fr/evidence/CD011959_statins-chronic-obstructive-pulmonary-disease-copd" class="language-link" hreflang="fr" data-drupal-link-system-path="node/10605">Français</a></li><li hreflang="ru" data-drupal-link-system-path="node/10605"><a href="/ru/evidence/CD011959_statins-chronic-obstructive-pulmonary-disease-copd" class="language-link" hreflang="ru" data-drupal-link-system-path="node/10605">Русский</a></li><li hreflang="hr" data-drupal-link-system-path="node/10605"><a href="/hr/evidence/CD011959_statins-chronic-obstructive-pulmonary-disease-copd" class="language-link" hreflang="hr" data-drupal-link-system-path="node/10605">Hrvatski</a></li><li hreflang="de" data-drupal-link-system-path="node/10605"><a href="/de/evidence/CD011959_statins-chronic-obstructive-pulmonary-disease-copd" class="language-link" rel="nofollow" hreflang="de" data-drupal-link-system-path="node/10605">Deutsch</a></li><li hreflang="ms" data-drupal-link-system-path="node/10605"><a href="/ms/evidence/CD011959_statins-chronic-obstructive-pulmonary-disease-copd" class="language-link" hreflang="ms" data-drupal-link-system-path="node/10605">Bahasa Malaysia</a></li><li hreflang="th" data-drupal-link-system-path="node/10605"><a href="/th/evidence/CD011959_statins-chronic-obstructive-pulmonary-disease-copd" class="language-link" rel="nofollow" hreflang="th" data-drupal-link-system-path="node/10605">ไทย</a></li><li hreflang="zh-hant" data-drupal-link-system-path="node/10605"><a href="/zh-hant/evidence/CD011959_statins-chronic-obstructive-pulmonary-disease-copd" class="language-link" hreflang="zh-hant" data-drupal-link-system-path="node/10605">繁體中文</a></li><li hreflang="zh-hans" data-drupal-link-system-path="node/10605"><a href="/zh-hans/evidence/CD011959_statins-chronic-obstructive-pulmonary-disease-copd" class="language-link" hreflang="zh-hans" data-drupal-link-system-path="node/10605">简体中文</a></li></ul>
+      </div>
+      <div class="language-more">
+        <ul class="links list--inline list--spaced">
+          <li id="open-languages" class="hidden">
+            <button id="button-open-languages"><img src="/libraries/fontawesome/svgs/regular/language.svg" style="width: 18px;height: 14.4px;display: inline;margin-bottom: -2px;" alt="Language icon"> More languages</button>
+          </li>
+          <li id="close-languages" class="hidden">
+            <button id="button-close-languages"><img src="/libraries/fontawesome/svgs/regular/language.svg" style="width: 18px;height: 14.4px;display: inline;margin-bottom: -2px;" alt="Language icon"> Fewer languages</button>
+          </li>
+          <li class="more-info"><a href="/get-involved/translate-our-evidence">About Cochrane translations</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+
+  </div>
+
+  <!-- donate & login -->
+  <nav id="nav-site-secondary" class="nav-site-secondary" role="menu">
+      <ul><li><a href="/cochranelogin" class="link-login">Log in</a></li><li><a href="https://www.cochranelibrary.com/" class="link-clib external" target="_blank">Cochrane Library</a></li></ul>
+    </nav>
+
+  </div>
+
+                  </div>
+  </div>
+</header>
+
+<header class="siteHeader__bar">
+  <div class="wrap">
+    <div class="grid">
+      <div class="col-3/5@mobile col-1/4@mobilewide col-1/4@tablet col-1/5@tabletwide col-2/13@desktop">
+        <div class="nav-site__logo">
+          <a href="/" title="Home">
+            <img src="/themes/custom/cochrane_hs/img/logo.png" alt="Cochrane">
+          </a>
+        </div>
+      </div>
+      <div class="col-full@mobile col-3/4@tablet col-4/5@tabletwide col-11/13@desktop">
+        <div class="grid">
+                                <div id="nav-site-search" class="nav-site-search col-full@mobile col-3/11@desktop hidden">
+  <div class="header-banner__search">
+    <form id="main-search" accept-charset="UTF-8">
+      <h2 class="visually-hidden">Search form</h2>
+      <div class="nav-site-search__inputGroup">
+        <label class="visually-hidden" for="main-search-query">Search</label>
+        <input title="Enter the terms you wish to search for." placeholder="Search" type="text" id="main-search-query" class="search" name="query" value="" size="30" maxlength="128">
+        <input type="submit" id="main-search-submit" value="Go">
+      </div>
+    </form>
+  </div>
+</div>  <div id="nav-site" class="mobile hidden">
+  <div class="nav-site__actions"></div>
+  <ul class="nav-site__list submenu" role="menu">
+          <li>
+        <a role="menuitem" class="" href="/about-us">About us</a>
+              </li>
+          <li>
+        <a role="menuitem" class="active" href="/evidence">Our evidence</a>
+                  <ul class="nav-site__sublist" role="menu">
+                          <li>
+                <a role="menuitem" class="" href="/evidence/what-are-systematic-reviews">What are systematic reviews?</a>
+              </li>
+                          <li>
+                <a role="menuitem" class="" href="/evidence/why-our-evidence-trusted">Why our evidence is trusted</a>
+              </li>
+                      </ul>
+              </li>
+          <li>
+        <a role="menuitem" class="" href="/get-involved">Get involved</a>
+              </li>
+          <li>
+        <a role="menuitem" class="" href="/learn">Learn</a>
+              </li>
+          <li>
+        <a role="menuitem" class="" href="/products-and-services">Products and services</a>
+              </li>
+          <li>
+        <a role="menuitem" class="" href="/authors">For authors</a>
+              </li>
+      </ul>
+</div>
+
+
+
+                          </div>
+      </div>
+    </div>
+    <button aria-controls="nav-site" aria-expanded="false" class="nav-site__button" title="Toggle navigation"><span class="hidden">Toggle navigation</span></button>
+    <button aria-controls="nav-site-search" aria-expanded="false" class="nav-site-search__button" title="Toggle search"><span class="hidden">Toggle search</span></button>
+  </div>
+</header>
+
+<div id="search-results" class="panel--white">
+  <div class="wrap">
+    <div class="grid">
+      <div class="col-9/13@desktop offset-2/13@desktop offset-reverse-2/13@desktop default-layout">
+        <div class="inner">
+          <div class="gcse-filters-wrapper">
+            <button aria-label="Filters" class="search-filter-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="filter-svg"><path d="M0 416c0 13.3 10.7 24 24 24l59.7 0c10.2 32.5 40.5 56 76.3 56s66.1-23.5 76.3-56L488 440c13.3 0 24-10.7 24-24s-10.7-24-24-24l-251.7 0c-10.2-32.5-40.5-56-76.3-56s-66.1 23.5-76.3 56L24 392c-13.3 0-24 10.7-24 24zm128 0a32 32 0 1 1 64 0 32 32 0 1 1 -64 0zM320 256a32 32 0 1 1 64 0 32 32 0 1 1 -64 0zm32-80c-35.8 0-66.1 23.5-76.3 56L24 232c-13.3 0-24 10.7-24 24s10.7 24 24 24l251.7 0c10.2 32.5 40.5 56 76.3 56s66.1-23.5 76.3-56l59.7 0c13.3 0 24-10.7 24-24s-10.7-24-24-24l-59.7 0c-10.2-32.5-40.5-56-76.3-56zM192 128a32 32 0 1 1 0-64 32 32 0 1 1 0 64zm76.3-56C258.1 39.5 227.8 16 192 16s-66.1 23.5-76.3 56L24 72C10.7 72 0 82.7 0 96s10.7 24 24 24l91.7 0c10.2 32.5 40.5 56 76.3 56s66.1-23.5 76.3-56L488 120c13.3 0 24-10.7 24-24s-10.7-24-24-24L268.3 72z"></path></svg> Filters</button>
+            <button aria-label="Close search" class="search-close-button">Close search ✖</button>
+            <div class="gcse-filters">
+              <h3 class="h5">Filters</h3>
+              <h4 class="h6">Evidence</h4>
+              <div class="filter-wrapper"><input type="checkbox" class="gsce-filter" name="gsce-filter-evidence" id="gsce-filter-evidence"><label for="gsce-filter-evidence">Our evidence</label></div>
+              <div class="filter-wrapper"><input type="checkbox" class="gsce-filter" name="gsce-filter-nonevidence" id="gsce-filter-nonevidence"><label for="gsce-filter-nonevidence">Exclude our evidence</label></div>
+              <h4 class="h6">Handbooks/Manuals</h4>
+              <div class="filter-wrapper"><input type="checkbox" class="gsce-filter" name="gsce-filter-handbook" id="gsce-filter-handbook"><label for="gsce-filter-handbook">Cochrane Handbook for Systematic Reviews of Interventions</label></div>
+              <div class="filter-wrapper"><input type="checkbox" class="gsce-filter" name="gsce-filter-mecir" id="gsce-filter-mecir"><label for="gsce-filter-mecir">Methodological Expectations of Cochrane Intervention Reviews (MECIR)</label></div>
+              <div class="filter-wrapper"><input type="checkbox" class="gsce-filter" name="gsce-filter-style" id="gsce-filter-style"><label for="gsce-filter-style">Cochrane Style Manual</label></div>
+              <h4 class="h6">News</h4>
+              <div class="filter-wrapper"><input type="checkbox" class="gsce-filter" name="gsce-filter-news" id="gsce-filter-news"><label for="gsce-filter-news">News</label></div>
+              <div class="filter-wrapper"><input type="checkbox" class="gsce-filter" name="gsce-filter-nonnews" id="gsce-filter-nonnews"><label for="gsce-filter-nonnews">Exclude news</label></div>
+            </div>
+          </div>
+          <div class="gcse-searchresults-only" data-gname="search-results" data-mobileLayout="disabled" data-lr="lang_en" data-hl="en"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <div class="masthead">
+    <div class="masthead-bkg">
+                    <div class="wrap">
+          <div class="grid">
+            <div class="col-9/13@desktop offset-2/13@desktop offset-reverse-2/13@desktop default-layout">
+                <div>
+    <div id="block-cochrane-hs-breadcrumbs">
+  
+    
+        <nav role="navigation" aria-labelledby="system-breadcrumb">
+    <h2 id="system-breadcrumb" class="visually-hidden">Breadcrumb</h2>
+    <ol class="breadcrumbs">
+          <li>
+                  <a href="/">Home</a>
+              </li>
+          <li>
+                  <a href="/evidence">Our evidence</a>
+              </li>
+        </ol>
+  </nav>
+
+  </div>
+
+  </div>
+
+            </div>
+          </div>
+        </div>
+                                  </div>
+  </div>
+      <div class="no-bg">
+      <div class="wrap">
+        <div class="grid">
+          <div class="col-9/13@desktop offset-2/13@desktop offset-reverse-2/13@desktop default-layout">
+            <div class="page-title">
+              <h1>  <div>
+    <div id="block-cochrane-hs-page-title">
+  
+    
+      
+  <span class="title">Statins for chronic obstructive pulmonary disease (COPD)</span>
+
+
+
+  </div>
+
+  </div>
+</h1>
+                          </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  
+    <main id="main-content">
+            <div>
+    <div data-drupal-messages-fallback class="hidden"></div>
+<div id="node-languages">
+  <div class="wrap">
+    <div class="grid">
+      <div class="col-9/13@desktop offset-2/13@desktop offset-reverse-2/13@desktop default-layout">
+        <div class="inner">
+          <h3>Also available in</h3><ul class="list--buttons"><li><a href="/evidence/CD011959_statins-chronic-obstructive-pulmonary-disease-copd" hreflang="en">English</a></li><li><a href="/es/evidence/CD011959_statins-chronic-obstructive-pulmonary-disease-copd" class="list--button-outline" hreflang="es">Español</a></li><li><a href="/fa/evidence/CD011959_statins-chronic-obstructive-pulmonary-disease-copd" class="list--button-outline" hreflang="fa">فارسی</a></li><li><a href="/fr/evidence/CD011959_statins-chronic-obstructive-pulmonary-disease-copd" class="list--button-outline" hreflang="fr">Français</a></li><li><a href="/ru/evidence/CD011959_statins-chronic-obstructive-pulmonary-disease-copd" class="list--button-outline" hreflang="ru">Русский</a></li><li><a href="/hr/evidence/CD011959_statins-chronic-obstructive-pulmonary-disease-copd" class="list--button-outline" hreflang="hr">Hrvatski</a></li><li><a href="/ms/evidence/CD011959_statins-chronic-obstructive-pulmonary-disease-copd" class="list--button-outline" hreflang="ms">Bahasa Malaysia</a></li><li><a href="/zh-hant/evidence/CD011959_statins-chronic-obstructive-pulmonary-disease-copd" class="list--button-outline" hreflang="zh-hant">繁體中文</a></li><li><a href="/zh-hans/evidence/CD011959_statins-chronic-obstructive-pulmonary-disease-copd" class="list--button-outline" hreflang="zh-hans">简体中文</a></li></ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="block-cochrane-hs-content">
+  
+    
+      <article>
+
+  
+    
+
+  
+  <div>
+    <div id="review" class="authoring wrap">
+  <div class="grid">
+    <div class="col-9/13@desktop offset-2/13@desktop offset-reverse-2/13@desktop default-layout">
+      <div class="grid review-groups">
+        <div class="review-main col-2/3@tabletwide">
+              <div class="field-pls"><h3>Review question</h3><p>We reviewed the evidence on the effects of statins on adults with COPD. We found eight relevant studies.</p><h3>Background</h3><p>Chronic obstructive pulmonary disease (COPD) is the name for a group of progressive lung conditions that cause breathing difficulties. This group includes emphysema and chronic bronchitis. Statins are medicines that can help lower the level of cholesterol in the blood. It has been suggested that through their anti-inflammatory properties statins might help reduce the number of exacerbations in people with COPD.</p><h3>Study characteristics</h3><p>We included eight studies involving 1323 participants comparing the benefits and harms of statins and placebo (an identical looking treatment with no therapeutic benefit) in people with COPD.</p><h3>Key results</h3><p>We found that statins reduced the level of inflammation in people with COPD but that this did not result in any clear improvement in exacerbations, mortality, functional capacity, quality of life, or lung function. Statins were generally well tolerated and were associated with few adverse effects.</p><h3>Quality of the evidence</h3><p>This evidence was of low or moderate quality, and most came from trials of short duration.</p><p>This review is current to May 2019.</p></div>
+      <details class="abstract js-form-wrapper form-wrapper" id="read-abstract">
+  <summary role="button" aria-controls="read-abstract" aria-expanded="false">Read the full abstract</summary>
+  
+    <div class="field-abstract-background">
+    <div>Background</div>
+              <div><p>Chronic obstructive pulmonary disease (COPD) is a common, preventable, and treatable respiratory disease. COPD exacerbations are associated with worse quality of life, increased hospitalisations, and increased mortality. Currently available pharmacological interventions have variable impact on exacerbation frequency. The anti-inflammatory effects of statins may lead to decreased pulmonary and systemic inflammation, resulting in fewer exacerbations of COPD. Several observational studies have shown potential benefits of statins for patients with COPD.</p></div>
+          </div>
+
+  <div class="field-abstract-objectives">
+    <h6 class="label">Objectives</h6>
+              <div><p>This review aims to evaluate available evidence on benefits and harms associated with statin therapy compared with placebo as adjunct therapy for patients with COPD. Primary objectives include the following.</p><p>• To determine whether statins reduce mortality rates in COPD.</p><p>• To determine whether statins reduce exacerbation frequency, improve quality of life, or improve lung function in COPD.</p><p>• To determine whether statins are associated with adverse effects.</p></div>
+          </div>
+
+  <div class="field-abstract-search-strategy">
+    <h6 class="label">Search strategy</h6>
+              <div><p>We identified trials from the Cochrane Airways Trials Register, which contains studies identified through multiple electronic searches and handsearches of other sources. We also searched trial registries and reference lists of primary studies. We conducted the most recent search on 20 May 2019.</p></div>
+          </div>
+
+  <div class="field-abstract-selectioncriteria">
+    <h6 class="label">Selection criteria</h6>
+              <div><p>Parallel, randomised controlled trials recruiting adults with COPD.</p></div>
+          </div>
+
+  <div class="field-abstract-data-collection">
+    <h6 class="label">Data collection and analysis</h6>
+              <div><p>We used standard methods as expected by Cochrane. Prespecified primary outcomes were number of exacerbations, all-cause mortality, and COPD-specific mortality.</p></div>
+          </div>
+
+  <div class="field-abstract-main-results">
+    <h6 class="label">Main results</h6>
+              <div><p>Eight studies including 1323 participants with COPD were included in the review. Participants had a mean age of 61.4 to 72 years, and most were male (median 73.4%). Mean baseline forced expiratory volume in one second (FEV₁) ranged from 41% to 90% predicted. All studies compared moderate- or high-intensity statin therapy versus placebo. The duration of treatment ranged from 12 weeks to 36 months.</p><p>We found no statistically significant difference between statins and placebo in our primary outcome of number of exacerbations per person-year (mean difference (MD) -0.03, 95% confidence interval (CI) -0.25 to 0.19, 1 trial, 877 participants), including number of exacerbations requiring hospitalisation per person-year (MD 0.00, 95% CI -0.10 to 0.10, 1 trial, 877 exacerbations). This evidence was of moderate quality after downgrading for unclear risk of bias. Our primary outcomes of all-cause mortality (odds ratio (OR) 1.03, 95% CI 0.61 to 1.74, 2 trials, 952 participants) and COPD-specific mortality (OR 1.25, 95% CI 0.38 to 4.13, 1 trial, 877 participants) showed no significant difference between statins and placebo, with wide confidence intervals suggesting uncertainty about the precision of the results. This evidence was of low quality after downgrading for unclear risk of bias and imprecision.</p><p>Results of the secondary outcomes analysis showed no clear differences between statins and placebo for FEV₁ (% predicted) (MD 1.18, 95% CI -2.6 to 4.97, 6 trials, 325 participants) but did show a statistically significant improvement in FEV₁/forced vital capacity (FVC) (MD 2.66, 95% CI 0.12 to 5.2; P = 0.04; 6 trials, 325 participants). A sensitivity analysis excluding two trials at high risk of bias showed no statistically significant difference in FEV₁/FVC (MD 2.05, 95% CI -0.87 to -4.97; P = 0.17; 4 trials, 255 participants). We also found no significant differences between the two groups in functional capacity measured by six-minute walk distance in metres (MD 1.79, 95% CI -52.51 to 56.09, 3 trials, 71 participants), with wide confidence intervals suggesting uncertainty about the precision of the results. Results show no clear difference in quality of life, which was reported in three trials, and a slight reduction in C-reactive protein (CRP) in the intervention group, which was statistically significant (MD -1.03, 95% CI -1.95 to -0.11; I²
+= 0%, P = 0.03; 3 trials, 142 participants). We noted a significant reduction in interleukin (IL)-6 in the intervention group (MD -2.11, 95% CI -2.65 to -1.56; I²
+= 0%, P ≤ 0.00001; 2 trials, 125 participants). All trials mentioned adverse events and indicated that statins were generally well tolerated. One study reported adverse events in detail and indicated that rates of all non-fatal adverse events (the number of serious adverse events per person-year) were similar in both groups (0.63 ± 1.56 events (intervention group) and 0.62 ± 1.48 events (control group); P &gt; 0.20) for all comparisons, except for non-fatal serious adverse events involving the gastrointestinal tract, which were more frequent in the intervention group (in 30 patients (0.05 events per person-year) vs 17 patients (0.02 events per person-year); P = 0.02). Another trial lists the total numbers and percentages of adverse events in the intervention group (12 (26%)) and in the control group (21 (43%)) and of serious adverse events in the intervention group (4 (9%)) and in the control group (3 (6%)).The other trials stated that researchers found no significant adverse effects of statins but did not report adverse events in detail.</p></div>
+          </div>
+
+  <div class="field-abstract-conclusions">
+    <h6 class="label">Authors&#039; conclusions</h6>
+              <div><p>A small number of trials providing low- or moderate-quality evidence were suitable for inclusion in this review. They showed that use of statins resulted in a reduction in CRP and IL-6, but that this did not translate into clear clinical benefit for people with COPD. Further randomised controlled trials are needed to explore this topic.</p></div>
+          </div>
+
+  
+</details>
+<div class="citation">
+  <h6 class="label">Citation</h6>
+      <div>Walsh A, Perrem L, Khashan AS, Henry MT, Ni Chroinin M. Statins versus placebo for people with chronic obstructive pulmonary disease. Cochrane Database of Systematic Reviews 2019, Issue 7. Art. No.: CD011959. DOI: 10.1002/14651858.CD011959.pub2.</div>
+  </div>
+
+</div>
+<div class="review-info col-1/3@tabletwide">
+  <aside>
+    <div>
+  <h6 class="label">Authors</h6>
+  <ul class="authors">
+          <li>Walsh A</li>
+          <li>Perrem L</li>
+          <li>Khashan AS</li>
+          <li>Henry MT</li>
+          <li>Ni Chroinin M</li>
+      </ul>
+</div>
+
+<div class="published">
+  <h6 class="label">Published</h6>
+      <div class="content"><time datetime="2019-07-31T12:00:00Z">31 July 2019</time>
+</div>
+  </div>
+
+    <div class="sidebar-region">
+        <div>
+    <div id="block-cochrane-hs-evidencetocliblink">
+  
+    
+      <a href="https://doi.wiley.com/10.1002/14651858.CD011959.pub2" class="button button--blue external" target="_blank">Full review on the Cochrane Library</a>
+  </div>
+
+  </div>
+
+    </div>
+  </aside>
+</div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+  </div>
+
+</article>
+
+  </div>
+
+  </div>
+
+      </main>
+  
+
+<div class="siteFooter">
+    <div class="wrap">
+        <div class="grid">
+            <div class="col-1/2 col-1/3@mobile col-2/6@mobilewide col-2/8@tablet col-2/10@tabletwide col-2/13@desktop">
+                <div class="nav-site__logo">
+                    <a href="/" title="Home">
+                        <img src="/themes/custom/cochrane_hs/img/logo-white.png" alt="Cochrane">
+                    </a>
+                </div>
+                <div style="padding-top:15px;font-weight:600;">
+                    Trusted evidence.<br>
+                    Informed decisions.<br>
+                    Better health.
+                </div>
+            </div>
+            <div class="col-1/2 col-1/3@mobile col-2/6@mobilewide col-2/8@tablet col-2/10@tabletwide col-7/13@desktop">
+                <p>
+                    11-13 Cavendish Square<br>
+                    London<br>
+                    W1G 0AN<br>
+                    United Kingdom
+                </p>
+                <div class="col-1/2 col-1/3@mobile col-2/6@mobilewide col-2/8@tablet col-2/10@tabletwide col-2/13@desktop">
+                </div>
+            </div>
+            <div class="col-1/2 col-1/3@mobile col-2/6@mobilewide col-2/8@tablet col-2/10@tabletwide col-2/13@desktop">
+                <ul class="list--compact">
+                    <li><a href="/contact-us">Contact us</a> </li>
+                    <li><a href="/about-us/news">News</a> </li>
+                    <li><a href="/about-us/news/press-office">Press office</a> </li>
+                    <li><a href="/about-us">About us</a> </li>
+                    <li><a href="/about-us/jobs">Jobs</a> </li>
+                    <li><a href="https://www.cochranelibrary.com/" target="_blank;" class="external">Cochrane Library</a> </li>
+                </ul>
+                <div id="meta-social" style="display:inline-flex;">
+                  <a style="padding-right:0.75em;" href="https://links.cochrane.org/facebook" target="_blank"><img alt="Facebook icon" title="Go to our Facebook page" style="width: 20px; height: 20px;" src="/assets/img/social/facebook-white.png"></a>
+                  <a style="padding-right:0.75em;" href="https://links.cochrane.org/youtube" target="_blank"><img alt="YouTube icon" title="Go to our YouTube channel" style="width: 20px; height: 20px;" src="/assets/img/social/youtube-white.png"></a>
+                  <a style="padding-right:0.75em;" href="https://links.cochrane.org/instagram" target="_blank"><img alt="Instagram icon" title="Go to our Instagram page" style="width: 20px; height: 20px;" src="/assets/img/social/instagram-white.png"></a>
+                  <a style="padding-right:0.75em;" href="https://links.cochrane.org/linkedin" target="_blank"><img alt="LinkedIn icon" title="Go to our LinkedIn page" style="width: 20px; height: 20px;" src="/assets/img/social/linkedin-white.png"></a>
+                  <a style="padding-right:0.75em;" href="https://links.cochrane.org/bsky" target="_blank"><img alt="Bluesky icon" title="Go to our Bluesky page" style="width: 20px; height: 20px;" src="/assets/img/social/bluesky-white.png"></a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="wrap">The Cochrane Collaboration is a charity (no. 1045921) and a company limited by guarantee (no. 03044323) registered in England & Wales. VAT registration number GB 718 2127 49.</div>
+    <div  class="wrap" style="border-top:1px solid white;font-size:0.825rem;margin-top:0.5em;padding-top:0.75em;">
+      <div style="display:inline;">Copyright &copy; 2026 The Cochrane Collaboration</div>
+      <div style="float:right; padding-right:10px;">
+        <a class="primaryNav__toggle" style="text-decoration:none; font-size:0.825rem;" href="/website-terms-and-conditions">Website Terms & Conditions</a> | <a class="primaryNav__toggle" style="text-decoration:none; font-size:0.825rem;" href="/privacy-policy#disclaimer">Disclaimer</a> | <a class="primaryNav__toggle" style="text-decoration:none; font-size:0.825rem;" href="/privacy-policy">Privacy</a> | <a class="primaryNav__toggle" style="text-decoration:none; font-size:0.825rem;" href="/privacy-policy#cookies-policy">Cookie policy</a> | <a class="primaryNav__toggle" style="text-decoration:none; font-size:0.825rem;" id="cookiesettings">Cookie settings</a>
+      </div>
+    </div>
+</div>
+
+
+  </div>
+
+    
+<div id="cookienotice">
+  <div class="inner">
+    <h4>Our use of cookies</h4>
+    <p>We use necessary cookies to make our site work. We'd also like to set optional analytics cookies to help us improve it. We won't set optional cookies unless you enable them. Using this tool will set a cookie on your device to remember your preferences. You can always change your cookie preferences at any time by clicking on the 'Cookies settings' link in the footer of every page.<br>For more detailed information about the cookies we use, see our <a href="https://www.cochrane.org/cookies-policy" class="external" target="_blank" title="Opens in new window">Cookies page</a>.</p>
+    <ul class="cookieslist">
+      <li><input type="checkbox" id="cookies-n" name="cookies[]" value="n" disabled="disabled" checked="checked">
+        <label for="cookies-n">
+          <span class="label">Necessary cookies</span>
+          <span class="description">Necessary cookies enable core functionality such as security, network management, and accessibility. You may disable these by changing your browser settings, but this may affect how the website functions.</span>
+        </label>
+      </li>
+      <li><input type="checkbox" id="cookies-l" name="cookies[]" value="l">
+        <label for="cookies-l">
+          <span class="label">Analytics</span>
+          <span class="description">We'd like to set cookies so we can analyse our website usage with <a href="https://links.cochrane.org/about-matomo" class="external" target="_blank" title="Opens in new window">Matomo</a>, to help us to improve our website and content. The data is anonymised and not shared with any third party. For more information see our <a href="https://www.cochrane.org/cookies-policy" class="external" target="_blank" title="Opens in new window">Cookies page</a>.</span>
+        </label>
+      </li>
+    </ul>
+    <div class="accept_all">Accept all</div>
+    <div class="configure">Configure</div>
+    <div class="accept_selected hidden">Accept selected</div>
+  </div>
+</div>
+<script>!function(){"use strict";function e(e,t){return(t||document).querySelector(e)}function t(e){e&&(e.classList.remove("hidden"),e.classList.add("visible"))}function i(e){e&&(e.classList.remove("visible"),e.classList.add("hidden"))}function s(e){if(!e)return!1;var t=window.getComputedStyle(e);return"none"!==t.display&&"hidden"!==t.visibility&&e.getClientRects().length>0}function n(s){var a=e("#nav-site"),o=e(".siteHeader__bar .nav-site__button"),d=e(".siteHeader__bar .nav-site-search__button"),l=e(".nav-site__list > li:first-child"),r=e(".nav-site__list > li:last-child");if(a&&o&&d&&l&&r){var c=l.offsetTop===r.offsetTop;if(window.innerWidth>1111&&c){t(a),a.classList.remove("mobile");var u=e(".nav-site__sublist li:first-child"),f=e(".nav-site__sublist li:last-child"),v=e(".nav-site__list"),_=e(".nav-site__sublist");u&&f&&v&&_&&u.offsetTop!==f.offsetTop&&(v.style.paddingBottom=_.offsetHeight+"px"),i(o),t(d),s||requestAnimationFrame((function(){n(!0)}))}else a.classList.add("mobile"),"false"===o.getAttribute("aria-expanded")&&i(a),t(o),t(d)}}function a(){e(".siteHeader__bar .nav-site__button");const t=document.querySelectorAll("#nav-lang .language-list li"),i=e("#open-languages"),s=e("#close-languages"),n=e("#button-open-languages"),a=e("#button-close-languages"),o=e("#nav-lang .language-list ul"),d=e("#nav-lang .language-more .more-info");if(t.length>1){const e=t[0],s=t[t.length-1];e.offsetTop<s.offsetTop&&i?.classList.remove("hidden")}n?.addEventListener("click",(function(){i?.classList.add("hidden"),s?.classList.remove("hidden"),o?.classList.add("open"),d?.classList.add("visible")})),a?.addEventListener("click",(function(){s?.classList.add("hidden"),i?.classList.remove("hidden"),o?.classList.remove("open"),d?.classList.remove("visible")}))}function o(){var t,i,s=(t=".sub-menu-sticky",Array.prototype.slice.call((i||document).querySelectorAll(t))),n=e(".siteHeader__bar");if(s.length&&n){var a=n.offsetHeight+"px";s.forEach((function(e){e.style.top=a}))}}var d,l;n(!1),a(),d=function(){var n,a,d,l,r;n=e(".siteHeader__bar .nav-site__button"),a=e(".siteHeader__bar .nav-site-search__button"),d=e("#nav-site"),l=e("#nav-site-secondary"),r=e("#nav-site-search"),n&&d&&n.addEventListener("click",(function(){s(d)?(i(d),i(l),n.setAttribute("aria-expanded","false")):(t(d),t(l),i(r),n.setAttribute("aria-expanded","true"),a&&a.setAttribute("aria-expanded","false"))})),a&&r&&a.addEventListener("click",(function(){if(s(r))i(r),a.setAttribute("aria-expanded","false");else{t(r),n&&s(n)&&i(d),a.setAttribute("aria-expanded","true"),n&&n.setAttribute("aria-expanded","false");var o=e("#nav-site-search input.search");o&&o.focus()}})),o()},"loading"!==document.readyState?d():document.addEventListener("DOMContentLoaded",d),window.addEventListener("resize",(function(){window.clearTimeout(l),l=window.setTimeout((function(){n(!1),a(),o()}),500)}))}();</script>
+<script>var analytics_cookies=!1;!function(e){const t="_cookies";var n=e.querySelector("#cookienotice"),o=function(t){var n=t+"=";let o=decodeURIComponent(e.cookie).split(";");for(let e=0;e<o.length;e++){let t=o[e];for(;" "==t.charAt(0);)t=t.substring(1);if(0===t.indexOf(n)){let e=t.substring(n.length,t.length);if(""!=e)return e}}return!1},c=function(t,n,c){var r=new Date;r.setTime(r.getTime()+24*c*60*60*1e3);var i="expires="+r.toUTCString();return e.cookie=t+"="+n+";"+i+";SameSite=Strict;Secure;path=/",o(t)},r=function(e){analytics_cookies=!0,"undefined"!=typeof _paq&&(e?_paq.push(["rememberCookieConsentGiven",43800]):_paq.push(["forgetCookieConsentGiven"]))},i=function(e){e?n.classList.add("open"):n.classList.remove("open")},s=o(t);(!1===s||"1"!==s&&function(e){try{JSON.parse(e)}catch(e){return!1}return!0}(s)||(e.cookie="_cookies=;Thu, 01 Jan 1970 00:00:00 UTC;domain=.cochrane.org;path=/",s=!1),JSON.parse(s).constructor!==Array&&(e.cookie="_cookies=;Thu, 01 Jan 1970 00:00:00 UTC;domain=.cochrane.org;path=/",s=!1),!1===s)?i(!0):-1!==JSON.parse(s).indexOf("l")&&r(!0);n.querySelector(".accept_all").addEventListener("click",(e=>{c(t,encodeURIComponent(JSON.stringify(["n","l"])),365),r(!0),i(!1)})),n.querySelector(".configure").addEventListener("click",(e=>{e.target.classList.add("hidden"),n.querySelector(".accept_selected").classList.remove("hidden"),n.classList.add("set")})),n.querySelector(".accept_selected").addEventListener("click",(e=>{let o=["n"];n.querySelector("input[value='l']").checked&&o.push("l"),c(t,encodeURIComponent(JSON.stringify(o)),365),i(!1)})),e.querySelector("#cookiesettings").addEventListener("click",(e=>{i(!0)}))}(document);</script>
+<script type="application/json" data-drupal-selector="drupal-settings-json">{"path":{"baseUrl":"\/","pathPrefix":"","currentPath":"node\/10605","currentPathIsAdmin":false,"isFront":false,"currentLanguage":"en"},"pluralDelimiter":"\u0003","suppressDeprecationErrors":true,"field_group":{"html_element":{"mode":"default","context":"view","settings":{"classes":"review-main","show_empty_fields":false,"id":"","label_as_html":false,"element":"div","show_label":false,"label_element":"h3","label_element_classes":"","attributes":"","effect":"none","speed":"fast"}},"details":{"mode":"default","context":"view","settings":{"classes":"abstract","show_empty_fields":false,"id":"read-abstract","label_as_html":false,"open":false,"description":""}}},"user":{"uid":0,"permissionsHash":"1ad520baf6809dabe3b0bd789fcbf92d9bf7c1de5168eedaa2c4adf879a6390f"}}</script>
+<script src="/core/assets/vendor/jquery/jquery.min.js?v=3.7.1" defer></script>
+<script src="/core/assets/vendor/once/once.min.js?v=1.0.1" defer></script>
+<script src="/core/misc/drupalSettingsLoader.js?v=10.6.13" defer></script>
+<script src="/core/misc/drupal.js?v=10.6.13" defer></script>
+<script src="/core/misc/drupal.init.js?v=10.6.13" defer></script>
+<script src="/modules/contrib/jquery_ui/assets/vendor/jquery.ui/ui/version-min.js?v=1.13.2" defer></script>
+<script src="/modules/contrib/jquery_ui/assets/vendor/jquery.ui/ui/keycode-min.js?v=1.13.2" defer></script>
+<script src="/modules/contrib/jquery_ui/assets/vendor/jquery.ui/ui/position-min.js?v=1.13.2" defer></script>
+<script src="/modules/contrib/jquery_ui/assets/vendor/jquery.ui/ui/safe-active-element-min.js?v=1.13.2" defer></script>
+<script src="/modules/contrib/jquery_ui/assets/vendor/jquery.ui/ui/unique-id-min.js?v=1.13.2" defer></script>
+<script src="/modules/contrib/jquery_ui/assets/vendor/jquery.ui/ui/widget-min.js?v=1.13.2" defer></script>
+<script src="/modules/contrib/jquery_ui/assets/vendor/jquery.ui/ui/widgets/menu-min.js?v=1.13.2" defer></script>
+<script src="/modules/contrib/jquery_ui/assets/vendor/jquery.ui/ui/widgets/autocomplete-min.js?v=1.13.2" defer></script>
+<script src="/themes/custom/cochrane_hs/js/more.min.js?v=1.1" defer></script>
+<script src="/themes/custom/cochrane_hs/js/cse.min.js?v=1.1" defer></script>
+<script src="/core/misc/debounce.js?v=10.6.13" defer></script>
+<script src="/core/misc/form.js?v=10.6.13" defer></script>
+<script src="/core/misc/details-summarized-content.js?v=10.6.13" defer></script>
+<script src="/core/misc/details-aria.js?v=10.6.13" defer></script>
+<script src="/core/misc/details.js?v=10.6.13" defer></script>
+<script src="/modules/contrib/field_group/js/field_group.details_validation.js?tityfe" defer></script>
+
+  <!-- <PageMap><DataObject type="document"><Attribute name="evidence">true</Attribute>
+<Attribute name="type">review</Attribute>
+<Attribute name="date">2019-07-31</Attribute>
+</DataObject>
+</PageMap>
+ -->
+<script>var _paq=window._paq=window._paq||[];_paq.push(["requireCookieConsent"]),_paq.push(["setCustomDimension",2,'en']),_paq.push(["trackPageView"]),_paq.push(["enableLinkTracking"]),_paq.push(["enableHeartBeatTimer"]),function(){_paq.push(["setTrackerUrl","https://cochrane-org.matomo.cloud/matomo.php"]),_paq.push(["setSiteId","1"]),analytics_cookies&&_paq.push(["rememberCookieConsentGiven",43800]);var e=document,a=e.createElement("script"),t=e.getElementsByTagName("script")[0];a.async=!0,a.src="https://cdn.matomo.cloud/cochrane-org.matomo.cloud/matomo.js",t.parentNode.insertBefore(a,t)}();</script>
+  </body>
+</html>
