@@ -1,0 +1,6 @@
+venv/
+__pycache__/
+*.pyc
+.env
+mock_data/history.db
+logs/

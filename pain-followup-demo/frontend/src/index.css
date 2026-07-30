@@ -1,0 +1,721 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+}
+
+body {
+  font-family: 'Microsoft YaHei', 'PingFang SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #eeeeee;
+  color: rgba(0, 0, 0, 0.9);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid #d7fffe;
+  outline-offset: 1px;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f3f3f3;
+}
+::-webkit-scrollbar-thumb {
+  background: #c5c5c5;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #a6a6a6;
+}
+
+/* WeChat bubble */
+@layer components {
+  .bubble-sent {
+    @apply text-white px-4 py-2.5 max-w-[80%] self-end;
+    background: #079284;
+    border-radius: 9px 3px 9px 9px;
+    box-shadow: 0 2px 5px rgba(7, 146, 132, 0.12);
+  }
+  .bubble-received {
+    @apply bg-white text-gray-800 px-4 py-2.5 max-w-[80%] self-start;
+    border: 1px solid #e7e7e7;
+    border-radius: 3px 9px 9px 9px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  }
+
+  .step-card {
+    @apply bg-white border p-4 transition-all duration-300;
+    border-color: #e7e7e7;
+    border-radius: 9px;
+  }
+  .step-card.active {
+    border-color: #43d5c7;
+    background: #f4fefe;
+    box-shadow: 0 2px 5px rgba(7, 146, 132, 0.08);
+  }
+  .step-card.done {
+    border-color: #a9f2eb;
+    background: #f4fefe;
+  }
+  .step-card.error {
+    border-color: #f6685d;
+    background: #fff0ed;
+  }
+
+  .stat-card {
+    @apply bg-white border p-4;
+    border-color: #e7e7e7;
+    border-radius: 9px;
+  }
+
+  .glass-panel {
+    @apply bg-white border;
+    border-color: #e7e7e7;
+    border-radius: 9px;
+  }
+}
+
+/* 蓝想数科 Template2.0 design tokens */
+.lan-app {
+  --lan-brand-light: #f4fefe;
+  --lan-brand-focus: #d7fffe;
+  --lan-brand-disabled: #a9f2eb;
+  --lan-brand-hover: #43d5c7;
+  --lan-brand: #079284;
+  --lan-error-light: #fff0ed;
+  --lan-error: #d54941;
+  --lan-warning-light: #fff1e9;
+  --lan-warning: #e37318;
+  --lan-info-light: #def3ff;
+  --lan-info: #3275b9;
+  --lan-page: #f5f6f7;
+  --lan-surface-muted: #f3f3f3;
+  --lan-surface: #ffffff;
+  --lan-divider: #e7e7e7;
+  --lan-border: #dcdcdc;
+  --lan-text: rgba(0, 0, 0, 0.9);
+  --lan-text-secondary: rgba(0, 0, 0, 0.6);
+  --lan-text-placeholder: rgba(0, 0, 0, 0.4);
+  --lan-text-disabled: rgba(0, 0, 0, 0.26);
+  background: var(--lan-page);
+  color: var(--lan-text);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.lan-app .lan-header {
+  height: 60px;
+  padding: 0 24px;
+  background: var(--lan-brand);
+  border-bottom: 0;
+  box-shadow: none;
+  color: #fff;
+}
+
+.lan-app .lan-header h1,
+.lan-app .lan-header .lan-header-version,
+.lan-app .lan-header .lan-header-divider,
+.lan-app .lan-header .lan-header-subtitle,
+.lan-app .lan-header .lan-header-meta,
+.lan-app .lan-header .text-gray-500,
+.lan-app .lan-header .text-gray-800 {
+  color: #fff !important;
+}
+
+.lan-app .lan-header-meta {
+  color: rgba(255, 255, 255, 0.86) !important;
+}
+
+.lan-brand-logo {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+
+.lan-app .lan-header-title-group {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+.lan-app .lan-header-title {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 32px;
+  letter-spacing: 0;
+}
+
+.lan-app .lan-header-version,
+.lan-app .lan-header-divider,
+.lan-app .lan-header-subtitle {
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 24px;
+}
+
+.lan-app .lan-header-divider {
+  color: rgba(255, 255, 255, 0.72) !important;
+}
+
+.lan-app .lan-main-tabs {
+  min-height: 44px;
+  padding: 0 20px;
+  background: #fff;
+  border-bottom: 1px solid var(--lan-divider);
+}
+
+.lan-app .lan-main-tab {
+  min-width: 120px;
+  min-height: 44px;
+  padding: 7px 16px;
+  border-radius: 0;
+  border-bottom-width: 2px;
+  color: var(--lan-text-secondary);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 22px;
+}
+
+.lan-app .lan-main-tab:hover {
+  color: var(--lan-brand);
+  background: var(--lan-brand-light);
+}
+
+.lan-app .lan-toolbar {
+  min-height: 60px;
+  padding: 10px 20px;
+  gap: 12px;
+  background: #fff;
+  border-bottom: 1px solid var(--lan-divider);
+}
+
+.lan-app .lan-toolbar-title {
+  min-width: 140px;
+  color: var(--lan-text);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 24px;
+}
+
+.lan-app .lan-btn {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+  white-space: nowrap;
+  transition: background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease;
+}
+
+.lan-app .lan-btn-primary {
+  border-color: var(--lan-brand);
+  background: var(--lan-brand);
+  color: #fff;
+}
+
+.lan-app .lan-btn-primary:hover:not(:disabled) {
+  border-color: var(--lan-brand-hover);
+  background: var(--lan-brand-hover);
+}
+
+.lan-app .lan-btn-outline {
+  border-color: var(--lan-border);
+  background: #fff;
+  color: var(--lan-text);
+}
+
+.lan-app .lan-btn-outline:hover:not(:disabled) {
+  border-color: var(--lan-brand);
+  color: var(--lan-brand);
+}
+
+.lan-app .lan-btn-soft {
+  border-color: var(--lan-brand-disabled);
+  background: var(--lan-brand-light);
+  color: var(--lan-brand);
+}
+
+.lan-app .lan-btn-brand-outline {
+  border-color: var(--lan-brand);
+  background: #fff;
+  color: var(--lan-brand);
+}
+
+.lan-app .lan-btn-brand-outline:hover:not(:disabled) {
+  border-color: var(--lan-brand-hover);
+  background: var(--lan-brand-light);
+  color: var(--lan-brand);
+}
+
+.lan-app .lan-btn-warning {
+  border-color: var(--lan-warning);
+  background: var(--lan-warning);
+  color: #fff;
+}
+
+.lan-app .lan-btn:disabled {
+  border-color: var(--lan-divider);
+  background: var(--lan-page);
+  color: var(--lan-text-disabled);
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.lan-app input,
+.lan-app select,
+.lan-app textarea {
+  border-color: var(--lan-border) !important;
+  border-radius: 3px !important;
+  background: #fff;
+  color: var(--lan-text);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.lan-app input:not([type='checkbox']):not([type='radio']),
+.lan-app select {
+  min-height: 40px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.lan-app .lan-compact-control {
+  width: 200px !important;
+  min-width: 200px;
+  max-width: 200px;
+}
+
+.lan-app input::placeholder,
+.lan-app textarea::placeholder { color: var(--lan-text-placeholder); }
+.lan-app input:hover,
+.lan-app select:hover,
+.lan-app textarea:hover { border-color: var(--lan-brand) !important; }
+.lan-app input:focus,
+.lan-app select:focus,
+.lan-app textarea:focus {
+  border-color: var(--lan-brand) !important;
+  box-shadow: 0 0 0 2px var(--lan-brand-focus);
+}
+
+.lan-app .lan-sidebar {
+  width: 304px;
+  background: #fff;
+  border-right: 1px solid var(--lan-divider);
+}
+
+.lan-app .lan-list-heading {
+  min-height: 44px;
+  padding: 11px 16px;
+  background: var(--lan-surface-muted);
+  border-bottom: 1px solid var(--lan-divider);
+  color: var(--lan-text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 20px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.lan-app .lan-list-item {
+  position: relative;
+  min-height: 76px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--lan-divider);
+}
+
+.lan-app .lan-list-item:hover { background: var(--lan-surface-muted); }
+.lan-app .lan-list-item.is-selected { background: var(--lan-brand-light); }
+.lan-app .lan-list-item.is-selected::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--lan-brand);
+  content: '';
+}
+
+.lan-app .lan-content {
+  background: var(--lan-page);
+  padding: 24px;
+}
+
+.lan-app .lan-card {
+  border: 1px solid var(--lan-divider) !important;
+  border-radius: 8px !important;
+  background: #fff;
+  box-shadow: none;
+}
+
+.lan-app .lan-empty {
+  border: 1px dashed var(--lan-border) !important;
+  border-radius: 8px !important;
+  background: #fff;
+}
+
+.lan-app .lan-chat-fab,
+.lan-chat-fab {
+  border: 1px solid #079284;
+  background: #079284;
+  box-shadow: 0 4px 12px rgba(7, 146, 132, 0.18);
+}
+
+.lan-icon {
+  display: inline-block;
+  flex: 0 0 auto;
+  vertical-align: -0.125em;
+}
+
+.lan-app .lan-icon-btn {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+}
+
+.lan-app .lan-icon-btn:hover { background: var(--lan-surface-muted); }
+
+.lan-app .lan-text-action,
+.lan-app .lan-section-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lan-app .lan-section-tab {
+  height: 34px !important;
+  min-height: 34px !important;
+  padding: 6px 10px !important;
+  border-radius: 3px !important;
+  font-size: 14px !important;
+  line-height: 22px !important;
+}
+
+.lan-app .lan-brand-bullet {
+  color: var(--lan-brand);
+}
+
+.lan-app .lan-control-reset {
+  font-size: 14px !important;
+  line-height: 22px;
+}
+
+.lan-app .lan-patient-results,
+.lan-app .lan-patient-results * {
+  font-size: 14px !important;
+}
+
+.lan-app .lan-chat-fab:hover,
+.lan-chat-fab:hover {
+  border-color: #43d5c7;
+  background: #43d5c7;
+}
+
+.lan-app .lan-tag,
+.lan-app [class*='bg-gray-100'][class*='text-gray-'],
+.lan-app [class*='bg-blue-50'][class*='text-blue-'],
+.lan-app [class*='bg-green-100'][class*='text-green-'],
+.lan-app [class*='bg-amber-100'][class*='text-amber-'],
+.lan-app [class*='bg-red-100'][class*='text-red-'] {
+  min-height: 24px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.lan-app .rounded-2xl { border-radius: 8px !important; }
+.lan-app .rounded-xl { border-radius: 6px !important; }
+.lan-app .rounded-lg,
+.lan-app .rounded-md,
+.lan-app .rounded { border-radius: 3px !important; }
+
+.lan-app .bg-gray-50 { background-color: var(--lan-surface-muted) !important; }
+.lan-app .bg-gray-100 { background-color: var(--lan-page) !important; }
+.lan-app .border-gray-100,
+.lan-app .border-gray-200 { border-color: var(--lan-divider) !important; }
+.lan-app .border-gray-300 { border-color: var(--lan-border) !important; }
+.lan-app .text-gray-800,
+.lan-app .text-gray-900,
+.lan-app .text-gray-700 { color: var(--lan-text) !important; }
+.lan-app .text-gray-600,
+.lan-app .text-gray-500 { color: var(--lan-text-secondary) !important; }
+.lan-app .text-gray-400 { color: var(--lan-text-placeholder) !important; }
+.lan-app .text-gray-300 { color: var(--lan-text-disabled) !important; }
+
+.lan-app .bg-blue-500,
+.lan-app .bg-blue-600,
+.lan-app .bg-green-500,
+.lan-app .bg-green-600,
+.lan-app .bg-purple-500,
+.lan-app .bg-purple-600,
+.lan-app .bg-teal-500,
+.lan-app .bg-teal-600 { background-color: var(--lan-brand) !important; }
+.lan-app [class*='bg-gradient-to-'] {
+  background-color: var(--lan-brand) !important;
+  background-image: none !important;
+}
+.lan-app .hover\:bg-blue-600:hover,
+.lan-app .hover\:bg-green-600:hover,
+.lan-app .hover\:bg-purple-600:hover,
+.lan-app .hover\:bg-teal-600:hover { background-color: var(--lan-brand-hover) !important; }
+.lan-app .bg-blue-50,
+.lan-app .bg-green-50,
+.lan-app .bg-teal-50,
+.lan-app .bg-purple-50 { background-color: var(--lan-brand-light) !important; }
+.lan-app .text-blue-500,
+.lan-app .text-blue-600,
+.lan-app .text-blue-700,
+.lan-app .text-green-500,
+.lan-app .text-green-600,
+.lan-app .text-green-700,
+.lan-app .text-teal-500,
+.lan-app .text-teal-600,
+.lan-app .text-purple-500,
+.lan-app .text-purple-600 { color: var(--lan-brand) !important; }
+.lan-app .border-blue-200,
+.lan-app .border-blue-300,
+.lan-app .border-green-200,
+.lan-app .border-green-300,
+.lan-app .border-purple-200,
+.lan-app .border-purple-300 { border-color: var(--lan-brand-disabled) !important; }
+.lan-app .border-blue-400,
+.lan-app .border-blue-500,
+.lan-app .border-green-400,
+.lan-app .border-green-500 { border-color: var(--lan-brand) !important; }
+
+.lan-app .bg-red-50 { background-color: var(--lan-error-light) !important; }
+.lan-app .bg-red-500,
+.lan-app .bg-red-600 { background-color: var(--lan-error) !important; }
+.lan-app .text-red-500,
+.lan-app .text-red-600,
+.lan-app .text-red-700 { color: var(--lan-error) !important; }
+.lan-app .border-red-200,
+.lan-app .border-red-400 { border-color: #ffb9b0 !important; }
+
+.lan-app .bg-amber-50,
+.lan-app .bg-yellow-50,
+.lan-app .bg-orange-50 { background-color: var(--lan-warning-light) !important; }
+.lan-app .bg-amber-500,
+.lan-app .bg-amber-600,
+.lan-app .bg-yellow-500,
+.lan-app .bg-orange-500 { background-color: var(--lan-warning) !important; }
+.lan-app .text-amber-500,
+.lan-app .text-amber-600,
+.lan-app .text-amber-700,
+.lan-app .text-yellow-600,
+.lan-app .text-yellow-700,
+.lan-app .text-orange-600,
+.lan-app .text-orange-700 { color: var(--lan-warning) !important; }
+.lan-app .border-amber-200,
+.lan-app .border-yellow-200,
+.lan-app .border-orange-200 { border-color: #ffb98c !important; }
+
+.lan-app .shadow-sm,
+.lan-app .shadow-md,
+.lan-app .shadow-lg { box-shadow: none !important; }
+.lan-app .stat-card > .absolute { display: none; }
+.lan-app .stat-card {
+  min-height: 108px;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.lan-app .stat-card .lan-icon { color: var(--lan-brand); }
+
+.lan-app .lan-progress {
+  padding: 12px 16px;
+  border: 1px solid var(--lan-divider);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.lan-app .lan-progress-track {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--lan-page);
+}
+
+.lan-app .lan-progress-value {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--lan-brand);
+  transition: width .24s ease;
+}
+
+.lan-app .lan-batch-progress {
+  border-color: var(--lan-brand-disabled);
+  background: var(--lan-brand-light);
+}
+
+.lan-app .lan-batch-progress-text {
+  color: var(--lan-brand);
+}
+
+.lan-app .lan-batch-progress-track {
+  background: var(--lan-brand-focus);
+}
+
+.lan-app .lan-batch-progress-value {
+  background: var(--lan-brand);
+}
+.lan-app .font-mono {
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif !important;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 900px) {
+  .lan-app .lan-header { padding: 0 16px; }
+  .lan-app .lan-header-title { font-size: 18px; line-height: 26px; }
+  .lan-app .lan-header-version { font-size: 14px; }
+  .lan-app .lan-header-divider,
+  .lan-app .lan-header-subtitle { display: none; }
+  .lan-app .lan-header .lan-header-meta > *:not(:first-child) { display: none; }
+  .lan-app .lan-main-tabs { padding: 0 8px; overflow-x: auto; }
+  .lan-app .lan-main-tab { min-width: max-content; padding-inline: 14px; }
+  .lan-app .lan-toolbar { padding: 8px 12px; }
+  .lan-app .lan-toolbar-title { min-width: auto; width: 100%; }
+  .lan-app .lan-sidebar { width: 260px; }
+  .lan-app .lan-content { padding: 16px; }
+}
+
+/* Animations */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.3); }
+}
+.animate-pulse-dot {
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+@keyframes progress-stripe {
+  0% { background-position: 1rem 0; }
+  100% { background-position: 0 0; }
+}
+.animate-stripe {
+  background-size: 1rem 1rem;
+  animation: progress-stripe 1s linear infinite;
+}
+
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-slide-up {
+  animation: fadeSlideUp 0.3s ease-out;
+}
+
+@keyframes pulse-scale {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.3); }
+}
+
+/* Vue Transitions */
+/* Fade transition */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+/* Slide-up transition */
+.slide-up-enter-active {
+  transition: all 0.3s ease-out;
+}
+.slide-up-leave-active {
+  transition: all 0.2s ease-in;
+}
+.slide-up-enter-from {
+  opacity: 0;
+  transform: translateY(20px);
+}
+.slide-up-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+/* Scale bounce transition */
+.scale-bounce-enter-active {
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.scale-bounce-leave-active {
+  transition: all 0.3s ease-in;
+}
+.scale-bounce-enter-from {
+  opacity: 0;
+  transform: scale(0.8);
+}
+.scale-bounce-leave-to {
+  opacity: 0;
+  transform: scale(0.8);
+}
+
+/* Slide from right */
+.slide-right-enter-active {
+  transition: all 0.4s ease-out;
+}
+.slide-right-leave-active {
+  transition: all 0.3s ease-in;
+}
+.slide-right-enter-from {
+  opacity: 0;
+  transform: translateX(100px);
+}
+.slide-right-leave-to {
+  opacity: 0;
+  transform: translateX(-100px);
+}
+
+/* Slide from left */
+.slide-left-enter-active {
+  transition: all 0.3s ease-out;
+}
+.slide-left-enter-from {
+  opacity: 0;
+  transform: translateX(-10px);
+}
+
+/* Number transition for stat counters */
+.number-enter-active {
+  transition: all 0.3s ease-out;
+}
+.number-enter-from {
+  opacity: 0;
+  transform: scale(1.4);
+}

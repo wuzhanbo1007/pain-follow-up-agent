@@ -1,0 +1,26 @@
+{
+  "version": "1.0",
+  "base_score_by_diagnosis": {
+    "带状疱疹后神经痛": 1,
+    "腰椎术后疼痛": 1,
+    "糖尿病周围神经痛": 1,
+    "癌性疼痛": 2
+  },
+  "base_score_by_age": {
+    "under_60": 0,
+    "60_70": 1,
+    "over_70": 2
+  },
+  "dynamic_rules": {
+    "nrs_ge_7": 3,
+    "nrs_ge_5": 1,
+    "rising_3day_trend": 2,
+    "medication_skipped": 1,
+    "poor_sleep_3day": 1
+  },
+  "levels": {
+    "low": { "min": 0, "max": 3, "color": "green", "label": "低风险", "action": "常规随访" },
+    "medium": { "min": 4, "max": 6, "color": "yellow", "label": "中风险", "action": "3日内关注" },
+    "high": { "min": 8, "max": 20, "color": "red", "label": "高风险", "action": "立即预警医生" }
+  }
+}

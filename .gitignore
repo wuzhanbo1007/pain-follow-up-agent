@@ -1,0 +1,32 @@
+# 日志
+*.log
+
+# 依赖
+node_modules/
+__pycache__/
+
+# 数据库文件
+*.db
+*.sqlite
+
+# 环境配置
+.env
+
+# 构建产物
+dist/
+.vite/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# Python
+*.pyc
+*.pyo
+venv/
+.venv/

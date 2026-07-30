@@ -1,0 +1,169 @@
+# PainSmart 9.0 — 慢性疼痛随访智能体
+
+基于 **FastAPI + LangGraph 多 Agent + RAG** 的慢性疼痛患者随访管理系统。
+
+---
+
+## 一、架构概述
+
+```
+A 号 Planner → B 号 Scheduler → C 号 Execution → D 号 Summarizer
+   (计划生成)     (当日判定)      (ReACT 对话)      (内容总结)
+
+入口: app.py → bootstrap → Socket.IO + FastAPI
+```
+
+| Agent | 文件 | 类型 | 职责 |
+|---|---|---|---|
+| A 号 | `agents/planner.py` | LangGraph 工作流 | 出院随访计划生成 + 医生 HITL 审阅 |
+| B 号 | `services/daily_scheduler.py` | 规则判定函数 | 今日是否随访（纯规则引擎） |
+| C 号 | `agents/execution.py` | ReACT 自主 Agent | 多轮随访对话，LLM 持工具自主解析+追问 |
+| D 号 | `agents/summarizer.py` | LLM 分析函数 | 随访会话内容总结（摘要/风险/完成度） |
+
+C 号是唯一真正自主的 Agent，A 号是工作流，B/D 号是 LLM 增强判定函数。
+
+---
+
+## 二、目录结构
+
+```
+pain-followup-demo/
+├── backend/
+│   ├── app.py                  # 入口：FastAPI + Socket.IO + bootstrap
+│   ├── agents/                 # 真正的 Agent（仅自主型+工作流）
+│   │   ├── planner.py          #   A 号 随访计划生成
+│   │   ├── execution.py        #   C 号 随访执行（ReACT 自主 Agent）
+│   │   ├── summarizer.py       #   D 号 会话内容总结
+│   │   ├── orchestrator.py     #   编排器 B→C→D 串联
+│   │   └── state.py            #   LangGraph 状态定义
+│   ├── services/               # 业务服务（非 Agent）
+│   │   ├── followup_service.py #   随访服务（Ws 驱动 / 自动编排）
+│   │   ├── daily_scheduler.py  #   B 号 当日判定
+│   │   └── doctor_review.py    #   医生人工审阅管线
+│   ├── engine/                 # 领域引擎
+│   │   ├── react_core.py       #   ReACT 处理引擎（LLM + 5 工具）
+│   │   ├── risk_engine.py      #   风险评分引擎
+│   │   ├── auto_reply.py       #   自动患者回复模拟
+│   │   ├── followup_scheduler.py # 随访排程规则引擎
+│   │   ├── tool_definitions.py #   Function-calling 工具定义
+│   │   └── tool_executor.py    #   工具执行器
+│   ├── db/                     # 持久化层（SQLite CRUD）
+│   │   └── followup_db.py      #   会话/计划/审阅 DAO
+│   ├── data/                   # 种子数据
+│   │   ├── database.py         #   PatientDB + 数据库初始化
+│   │   └── patients.py         #   患者数据定义
+│   ├── prompts/                # LLM 提示词
+│   │   ├── react_nurse.py      #   C 号 ReACT 护士系统提示词
+│   │   ├── reply_parsing.py    #   患者回复结构化解析提示词
+│   │   ├── plan_generation.py  #   A 号 计划生成提示词
+│   │   ├── plan_system.py      #   A 号 强制 JSON 输出提示词
+│   │   ├── review_analysis.py  #   D 号 会话总结提示词
+│   │   ├── personalized_message.py # 个性化开场白/告别语
+│   │   └── clarification_message.py # 模糊回复澄清
+│   ├── llm/                    # LLM 封装层
+│   │   ├── client.py           #   统一 chat 接口
+│   │   ├── model.py            #   模型构建（bind_tools 等）
+│   │   ├── message_generator.py #  个性化消息生成
+│   │   └── parser.py           #   患者回复解析（NLP→结构化）
+│   ├── routes/                 # HTTP + WebSocket 路由
+│   │   ├── ws.py               #   Socket.IO 事件处理
+│   │   ├── review.py           #   审阅 REST API
+│   │   ├── plan.py             #   计划 REST API
+│   │   └── patients.py         #   患者 REST API
+│   ├── core/                   # 基础设施
+│   │   ├── config.py           #   全局配置
+│   │   ├── bootstrap.py        #   启动初始化
+│   │   ├── container.py        #   DI 容器
+│   │   ├── event_bus.py        #   事件总线
+│   │   └── realtime.py         #   WebSocket 桥接
+│   └── knowledge/              # RAG 知识库（Chroma）
+├── frontend/                   # Vue 3 + Pinia + Tailwind
+│   └── src/
+│       ├── pages/DemoPage.vue  #   主页面（三 Tab）
+│       ├── pages/ChatPage.vue  #   微信聊天页
+│       └── components/         #   审阅/对话/控制面板等
+└── knowledge_base/             # 知识库语料（不入 git）
+```
+
+---
+
+## 三、C 号 ReACT Agent 的工具
+
+LLM 在 `engine/react_core.py` 的 `run_tool_reflect` 中持 5 个 function-calling 工具，自主决定调用顺序：
+
+| # | 工具名 | 做什么 | 何时调用 |
+|---|---|---|---|
+| 1 | `parse_patient_reply` | 从患者回复提取 NRS / 睡眠 / 用药 / 副作用 | **每轮必调**，收到任何患者回复首先调用 |
+| 2 | `query_patient_history` | 查询近 7 天历史随访记录 | 需要了解疼痛趋势或补充背景时 |
+| 3 | `calculate_risk_score` | 计算风险评分（0-20）和等级 | NRS 提取到后，了解风险趋势调整语气 |
+| 4 | `escalate_alert` | 推医生预警通知 | 风险 ≥ 8 分或紧急情况 |
+| 5 | `finalize_followup` | 结束随访，输出摘要结束语 | 四项信息全部收齐后，或患者明确结束 |
+
+**护栏机制**：LLM 调用 `finalize_followup` 后系统检查四项（疼痛/睡眠/用药/副作用）是否都收集齐了——没齐就拦截，让 LLM 针对缺失项生成追问。硬上限 20 轮。
+
+---
+
+## 四、对话流程（手动演示）
+
+```
+前端 WebSocket "demo:simulate_reply"
+  → routes/ws.py → FollowupService.on_patient_reply()
+    → _react_reflect → engine/react_core.run_tool_reflect()
+      → LLM 调用工具（parse → risk → 生成追问）
+    → 护栏检查 should_end + missing_items
+    → _send_question_text → WebSocket 推回前端显示
+```
+
+自动患者走 `agents/execution.py` LangGraph 循环，复用同一 ReACT 引擎。
+
+---
+
+## 五、快速开始
+
+### 后端（端口 5000）
+
+```bash
+cd pain-followup-demo/backend
+python -m venv venv && venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env    # 编辑 LLM_API_KEY
+python app.py
+```
+
+### 前端（端口 3000）
+
+```bash
+cd pain-followup-demo/frontend
+npm install && npm run dev
+# 打开 http://localhost:3000
+```
+
+### 环境变量（.env）
+
+```ini
+LLM_API_KEY=sk-xxxx          # DeepSeek / OpenAI 兼容 Key
+LLM_BASE_URL=https://api.deepseek.com
+LLM_MODEL=deepseek-chat
+DEMO_TODAY=2026-07-29        # 可选：固定演示日期
+```
+
+未配置 Key 时自动降级为关键词/模板匹配，Demo 不中断。
+
+---
+
+## 六、技术栈
+
+| 层 | 技术 |
+|---|---|
+| 后端框架 | FastAPI + Socket.IO (ASGI) |
+| LLM | OpenAI 兼容接口（DeepSeek），via LangChain |
+| Agent 编排 | LangGraph StateGraph |
+| Function Calling | ChatOpenAI.bind_tools() |
+| 向量库 | ChromaDB（BAAI/bge-m3 embedding） |
+| 数据库 | SQLite（`data/history.db`） |
+| 前端 | Vue 3 + Pinia + Tailwind CSS + Vite |
+| 实时通信 | Socket.IO (server + client) |
+
+---
+
+> 演示数据均为算法模拟生成，不含真实患者隐私信息。
