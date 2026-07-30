@@ -16,3 +16,5 @@ pypdf==6.14.2
 json-repair==0.59.10
 pydantic==2.13.3
 pydantic-settings==2.14.0
+Faker==40.36.0
+PyMySQL==1.2.0
