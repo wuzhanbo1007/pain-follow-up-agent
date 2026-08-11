@@ -5,7 +5,6 @@
 当日随访判定、依赖容器组装，并把结果写入 core.runtime 供 routes / ws 读取。
 保持原有逻辑与日志不变（纯搬家）。
 """
-import sqlite3
 import time as _time
 
 from core import config
@@ -17,32 +16,25 @@ log = get_logger("painsmart")
 
 def bootstrap():
     """初始化数据库与运行时共享状态，填充 core.runtime。"""
-    from data.database import PatientDB, DB_PATH, init_db
+    from data.database import PatientDB, init_db
     from engine.followup_scheduler import apply_today_followup_flags, build_today_send_list
     from core.container import build_container
     from db.followup_db import create_plan, get_latest_plan
 
-    # ======== 初始化 SQLite 数据库 ========
+    # ======== 初始化 MySQL 数据库（幂等建 21 张表 + 首次播种）========
     _t0 = _time.time()
     init_db()
     log.info("init_db 完成 (%.1fs)", _time.time() - _t0)
-    # 每次启动清空旧表数据
-    _conn = sqlite3.connect(DB_PATH)
-    _conn.execute("PRAGMA foreign_keys=OFF")
-    _conn.execute("DELETE FROM followup_review")
-    _conn.execute("DELETE FROM followup_session")
-    _conn.execute("DELETE FROM followup_plan")
-    _conn.execute("PRAGMA foreign_keys=ON")
-    _conn.commit()
-    _conn.close()
-    log.info("已清空旧随访计划 / 会话 / 审阅数据")
+    # 说明：MySQL 为持久化存储，不再每次启动清空随访计划/会话/审阅；
+    # 播种逻辑幂等（患者表为空时才写入），与历史随访状态共存。
 
     db = PatientDB()
     PATIENTS = db.get_all_patients()
 
     # ======== 预填充随访计划草稿 ========
     _pt0 = _time.time()
-    _PREFILL_SKIP_IDS = {"P20240004", "P20240005"}
+    # 演示用：跳过演示患者（沈桂珍 patient_id=15），由 Demo 流程手动推进
+    _PREFILL_SKIP_IDS = {15}
     _prefill_count = 0
     for _p in PATIENTS:
         if _p.get("skip_follow_up"):

@@ -1,8 +1,8 @@
 """
 C. 随访执行智能体（FollowUpExecutionAgent）
 
-V9.1: ReACT 循环改为 function-calling 驱动——LLM 持工具（parse/history/risk/escalate/finalize），
-自行解析回复、评估风险、生成追问，一次调用替代原来的 reflect_decision + generate_nurse_question 两次调用。
+ReACT 循环由 function-calling 驱动——LLM 持工具（parse/history/risk/escalate/finalize），
+自行解析回复、评估风险、生成追问，一次调用替代原来的两次调用。
 
 图结构：
     START → generate_message
@@ -36,7 +36,7 @@ from engine.auto_reply import AutoReplyEngine
 # LLM 完全不可用时的降级轮次
 FALLBACK_MAX_ROUNDS = 2
 # 硬编码最大轮次上限（防止 LLM 在患者反复给模糊回复时无限追问）
-HARD_MAX_ROUNDS = 8  # 自动患者 8 轮足够，手动演示仍用 followup_service 的 20 轮
+HARD_MAX_ROUNDS = 4  # 自动患者 4 轮收尾；手动演示（followup_service）单独用 20 轮
 
 
 def _engines():
@@ -53,12 +53,10 @@ async def _generate_message(state: AgentState) -> dict:
     patient = state.get("patient", {})
     mg, _, _ = _engines()
     try:
-        res = await mg.generate(patient)
-        msg = res.get("message", "")
-        basis = res.get("generation_basis", {})
+        # 用新版开场白（问候+出院天数+人文关怀+问句结尾），与手动演示路径一致
+        msg = await mg.generate_greeting(patient)
     except Exception:
         msg = f"{patient.get('name','患者')}您好，又到随访时间了。今天感觉怎么样？疼痛大概几分？睡得还好吗？药有没有按时吃呀？"
-        basis = {}
     transcript = [{"role": "nurse", "content": msg}]
     return {"transcript": transcript, "agent_summary": f"已生成随访消息并发送：{msg[:40]}..."}
 
@@ -215,7 +213,7 @@ def _react_fallback(rnd: int) -> dict:
     }
 
 
-# ========== 图构建（V9.1：tool_reflect 替代 parse_reply + react_reflect）==========
+# ========== 图构建 ==========
 
 def build_execution_graph():
     g = StateGraph(AgentState)

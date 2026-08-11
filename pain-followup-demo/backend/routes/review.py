@@ -80,7 +80,7 @@ def api_submit_review(data: Optional[dict] = Body(None)):
             session_id=session_id,
             doctor_score=data.get("doctor_score"),
             doctor_comment=data.get("doctor_comment"),
-            track_status=data.get("track_status", "pending_track"),
+            track_status=data.get("track_status", "followup_done"),
             reviewer_id=data.get("reviewer_id"),
         )
     except Exception as e:

@@ -91,6 +91,10 @@ def _rule_summary(session: dict, transcripts: list) -> dict:
 
 
 def _clamp_score(v) -> int:
+    # LLM 返回的 completion_score 是对象 {total, breakdown}，
+    # 规则兜底是 int；统一抽成 0-100 的整数总分。
+    if isinstance(v, dict):
+        v = v.get("total", v.get("total_score"))
     try:
         s = int(v)
     except (TypeError, ValueError):

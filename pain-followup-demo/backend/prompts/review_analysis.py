@@ -1,13 +1,8 @@
 """
-D 号审阅 Agent 的审阅分析 Prompt（多 Agent 架构改造 V10.0）
+D 号审阅 Agent 的审阅分析 Prompt
 
-V10.0 升级：
-- risk_flags 新增 severity 字段（高/中/低），不再只是字符串数组
-- completion_score 拆分为 4 个维度：信息完整度、交互质量、风险识别、患者情绪
-- 新增 urgency_level（医生是否需要立即查看）
-- 新增 follow_up_actions（可落地的具体后续动作，含优先级）
-- 审阅评分标准从"感觉"升级为"明确打分锚点"
-- 新增 evidence_review（评估 LLM 引用的指南证据是否恰当）
+输出结构化审阅结果：summary / risk_flags（含 severity）/ completion_score（4 维拆分）/
+urgency_level / suggestions（含优先级）/ follow_up_actions。
 """
 
 import json

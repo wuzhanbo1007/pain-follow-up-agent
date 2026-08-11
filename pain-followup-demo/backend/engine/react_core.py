@@ -4,9 +4,6 @@ B/C/D 共享 ReACT 内核（非 Agent，纯处理引擎）
 把 execution.py 与 followup_service.py 中重复的「LLM解析+追问生成」
 纯逻辑抽取到此处，供两条路径共用。
 
-V9.1: ReACT 循环改为 function-calling 驱动——LLM 持工具自行解析回复、
-评估风险、生成追问，一次调用替代原来的 reflect_decision + generate_nurse_question。
-
 设计约束：
   - 不在此处做事件推送副作用。
   - 降级函数 fallback_fn 由调用方注入。
@@ -19,9 +16,12 @@ from typing import Any
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, ToolMessage
 
 from llm.client import is_llm_available, build_tool_model
+from llm.model import achat_completion
 from engine.tool_definitions import TOOL_SCHEMAS
 from engine.tool_executor import execute_tool
-from prompts.react_nurse import TOOL_NURSE_SYSTEM
+from prompts.react_prompts import (
+    TOOL_NURSE_SYSTEM, TARGET_QUESTION_SYSTEM, build_summary_prompt,
+)
 from core.logging_config import get_logger
 
 log = get_logger("painsmart.react_engine")
@@ -49,6 +49,7 @@ async def run_tool_reflect(
     fallback_fn,
     *,
     previous_tool_results: dict | None = None,
+    early_summary: str = "",
 ) -> dict:
     """ReACT 单轮决策：LLM 持工具自行解析回复、评估风险、决定是否结束。
 
@@ -88,10 +89,28 @@ async def run_tool_reflect(
                 known.append(f"{k}={v}")
         if known:
             context_lines.append(f"已收集信息：{', '.join(known)}")
+        if early_summary:
+            context_lines.append(f"更早对话摘要：{early_summary}")
         lc_msgs.append(HumanMessage(content="\n".join(context_lines)))
 
         conv_lc = _conv_to_lc(conversation)
         lc_msgs.extend(conv_lc[-20:])
+
+        # 承接锚点：单独高亮患者最后一条消息，强制"先承接再提问"，消除多轮对话段间割裂。
+        # 放在对话末尾作为显式指令，让 LLM 生成护士消息时以患者上一句为落点。
+        _last_patient = next(
+            (m["content"] for m in reversed(conversation)
+             if m.get("role") in ("patient", "user")),
+            "",
+        )
+        if _last_patient:
+            lc_msgs.append(HumanMessage(
+                content=(
+                    f"【发送要求】患者刚刚说：\"{_last_patient}\"。"
+                    "你要发送的护士消息必须先简短承接这一句（共情/确认/复述要点），"
+                    "再自然过渡到下一个待收集项；患者已经说过的信息不要重复问。"
+                )
+            ))
 
         response = await model.ainvoke(lc_msgs)
 
@@ -159,6 +178,30 @@ async def run_tool_reflect(
         return fallback_fn()
 
 
+async def summarize_overflow(existing_summary: str, messages: list[dict]) -> str | None:
+    """纯 LLM：把被挤出窗口的最早对话批次压成一段累计摘要，供长对话保留前情提要。
+
+    合并「已有摘要」与「本批新消息」，输出一段更完整的前情提要。
+    LLM 不可用或调用失败时返回 None，调用方保留旧摘要并丢弃该批（等同旧截断行为）。
+    """
+    if not is_llm_available():
+        return None
+    lines = []
+    for m in messages:
+        role = "护士" if m.get("role") in ("nurse", "assistant") else "患者"
+        lines.append(f"{role}：{m.get('content', '')}")
+    prompt = build_summary_prompt(existing_summary, lines)
+    try:
+        text = (await achat_completion(
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+            max_tokens=400,
+        )).strip()
+        return text or None
+    except Exception:
+        return None
+
+
 async def target_question(missing_items: list, patient: dict = None,
                           conversation: list = None) -> str:
     """护栏触发时，让 LLM 为缺失项生成自然的追问（保持语气连贯）。
@@ -188,9 +231,7 @@ async def target_question(missing_items: list, patient: dict = None,
         raw = await chat(
             messages=[{
                 "role": "system",
-                "content": f"你是疼痛随访护士。对话中以下信息还没收集：{items_str}。"
-                           f"请生成一句自然的追问，只问其中1个最优先的缺失项。"
-                           f"语气亲切口语化，像微信聊天。只输出追问文本，不要任何前缀。"
+                "content": TARGET_QUESTION_SYSTEM.format(items_str=items_str),
             }, {
                 "role": "user",
                 "content": f"患者：{name}\n{ctx}\n\n请针对缺失项{items_str}生成追问："

@@ -88,7 +88,7 @@
               <span class="text-xs font-medium text-gray-800 truncate">{{ p.name }}</span>
               <span class="text-xs font-mono font-bold text-gray-800 ml-1 shrink-0">{{ p.score }}分</span>
             </div>
-            <div class="text-xs text-gray-400 truncate mt-0.5">{{ p.diagnosis }} · {{ p.patient_id }}</div>
+            <div class="text-xs text-gray-400 truncate mt-0.5">{{ p.diagnosis }}</div>
           </div>
         </div>
       </div>
@@ -109,7 +109,7 @@
                 {{ p.score == null ? '未回' : p.score + '分' }}
               </span>
             </div>
-            <div class="text-xs text-gray-400 truncate mt-0.5">{{ p.diagnosis }} · {{ p.patient_id }}</div>
+            <div class="text-xs text-gray-400 truncate mt-0.5">{{ p.diagnosis }}</div>
           </div>
         </div>
       </div>
@@ -128,7 +128,7 @@
               <span class="text-xs font-medium text-gray-800 truncate">{{ p.name }}</span>
               <span class="text-xs font-mono font-bold text-gray-800 ml-1 shrink-0">{{ p.score }}分</span>
             </div>
-            <div class="text-xs text-gray-400 truncate mt-0.5">{{ p.diagnosis }} · {{ p.patient_id }}</div>
+            <div class="text-xs text-gray-400 truncate mt-0.5">{{ p.diagnosis }}</div>
           </div>
         </div>
       </div>

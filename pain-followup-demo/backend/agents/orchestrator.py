@@ -60,6 +60,10 @@ async def run_followup_pipeline(patient_id: str, plan_id: str = None, today=None
         ctx["summary"] = f"今日无需随访：{b_decision.get('reason', '')}"
         return ctx
 
+    # plan_id 未透传时，回退到最新计划的 id（followup_sessions.plan_id 列 NOT NULL，不能为 None）
+    if plan_id is None and plan:
+        plan_id = plan.get("plan_id")
+
     # ---- C 号：随访执行 ----
     c = await run_session(patient_id, plan_id=plan_id)
     ctx["c_session"] = c
@@ -81,7 +85,7 @@ async def run_followup_pipeline(patient_id: str, plan_id: str = None, today=None
             review_id = followup_db.create_review(
                 session_id=session_id,
                 patient_id=patient_id,
-                track_status="pending_track",
+                track_status="followup_done",
                 audit_snapshot={"source": "orchestrator", "b_decision": b_decision, "ai_review": d_review},
             )
             ctx["review_id"] = review_id

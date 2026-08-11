@@ -58,7 +58,7 @@ def build_review_graph(emit=None):
 
 
 def submit_review(session_id, doctor_score=None, doctor_comment=None,
-                 track_status="pending_track", reviewer_id=None):
+                 track_status="followup_done", reviewer_id=None):
     """
     医生提交审阅（需求二 F2.3/F2.4/F2.5）——对应 POST /api/reviews
     落库 followup_review，audit_snapshot 保存会话快照（留痕，风险 4）。

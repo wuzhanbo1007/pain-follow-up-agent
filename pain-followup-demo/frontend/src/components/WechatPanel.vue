@@ -10,7 +10,12 @@
           <button @click="activeChat = null" class="lan-icon-btn text-white hover:text-gray-300" aria-label="返回"><LanIcon name="left" :size="20" /></button>
           <div>
             <div class="font-semibold text-sm">{{ activePatient ? activePatient.name : '疼痛随访助手' }}</div>
-            <div class="text-xs text-gray-400">在线</div>
+            <div class="text-xs text-gray-400">
+              <template v-if="activePatient">
+                {{ (activePatient.hospital_name || '协和医院') + (activePatient.department_name || '') + ' ' + (activePatient.doctor_name || '') }} · 在线
+              </template>
+              <template v-else>在线</template>
+            </div>
           </div>
         </div>
         <button @click="$emit('close')" class="lan-icon-btn text-white hover:text-gray-300" aria-label="关闭"><LanIcon name="close" :size="20" /></button>

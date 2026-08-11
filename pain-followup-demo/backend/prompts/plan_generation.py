@@ -1,14 +1,16 @@
-"""出院随访计划生成提示词（慢性疼痛 V10.0）
+"""出院随访计划生成提示词（慢性疼痛）
 
-V10.0 升级：
-- 修复 duration_days 示例为 90 与"动态判断"规则不一致的问题
-- 新增证据质量分级提示（强/中/弱），引导 LLM 在 evidence 不足时保守
-- 新增证据不足时的分层降级策略（完全空 / 部分缺失 / 充足）
-- 频次生成从"举例"升级为"语义推理框架"（按病期阶段 × 严重程度 × 指南建议综合判断）
-- 新增疼痛类型细分引导（神经病理性/伤害性/混合性/癌性，对应不同随访逻辑）
+规则要点：
+- recheck_items 按疼痛类型分框架动态生成、尽量带引用
+- medication_adjustment / warning_threshold / health_education / lifestyle 均有完整生成规则
+- 引用一致性约束：正文 [n] 与 evidence_basis 一一对应、编号连续
+- 证据质量分级（强/中/弱），evidence 不足时保守降级（完全空 / 部分缺失 / 充足）
+- 频次按病期阶段 × 严重程度 × 指南建议语义推理；疼痛类型细分（神经病理性/伤害性/混合性/癌性）
 """
 
 import json
+
+from knowledge import config as kb_config
 
 
 def build_prompt(patient: dict, diagnosis: str, discharge_summary: str, evidence: list) -> str:
@@ -30,12 +32,14 @@ def build_prompt(patient: dict, diagnosis: str, discharge_summary: str, evidence
     patient_prompt = {k: v for k, v in (patient or {}).items()
                       if k not in ("skip_follow_up", "skip_reason", "follow_up_plan", "consecutive_no_reply_days")}
 
-    ev_list = (evidence or [])[:5]
+    # 与检索 top-k 保持一致（config.RETRIEVE_TOP_K，当前 8）；之前写死 [:5] 导致引用只有 5 条
+    ev_list = (evidence or [])[: kb_config.RETRIEVE_TOP_K]
     ev_text = "\n".join(
         f"[{i+1}] 《{_ev(e,'title')}》{('('+str(_ev(e,'year'))+')') if _ev(e,'year') else ''}"
         f"，页码：{_ev(e,'page') or '未知'}"
         f"{('，条款编号：'+str(_ev(e,'clause_no'))+'条') if _ev(e,'clause_no') else ''}"
-        f"\n摘要：{_ev(e,'text')[:200]}"
+        # 摘要长度跟随分块逻辑（PROMPT_EXCERPT_CHARS，默认半个 chunk）
+        f"\n摘要：{_ev(e,'text')[: kb_config.PROMPT_EXCERPT_CHARS]}"
         for i, e in enumerate(ev_list)
     ) or "（未检索到相关指南/共识条款）"
 
@@ -80,6 +84,25 @@ def build_prompt(patient: dict, diagnosis: str, discharge_summary: str, evidence
   · 癌性疼痛 → 关注爆发痛、阿片类药物副作用、心理状态
   · 混合性疼痛 → 关注上述多个维度
 
+9.【复查项目动态生成】recheck_items 必须基于检索到的指南/共识条款，提取与该患者诊断、疼痛类型相关的复查维度，每项一句话，不得随意堆砌或照抄示例。
+  复查维度框架（按疼痛类型）：
+  · 神经病理性疼痛 → 疼痛NRS评分、睡眠质量、用药依从性、感觉异常/触诱发痛评估
+  · 伤害性疼痛 → 创口愈合情况、活动能力、疼痛评分
+  · 癌性疼痛 → 爆发痛频率、阿片类药物副作用（便秘/嗜睡）、心理状态
+  · 慢性腰痛 → 活动能力、运动康复执行、红旗征预警
+  · 骨关节炎 → 关节疼痛、活动功能、减重/运动执行
+  每项复查项目尽量标注引用编号 [n]；无对应条款支撑的复查项可不标注，但不得编造。
+
+10.【用药调整动态生成】medication_adjustment 必须基于检索条款中的药物建议，写清药物名/剂型/剂量/服用方式，并标注引用 [n]。
+  若检索条款无对应药物建议 → 填写"建议医生人工制定"，不得自行编造药物或剂量。
+
+11.【预警阈值动态生成】warning_threshold 从检索条款中提取疼痛干预/转诊阈值（如 NRS≥7、睡眠连续恶化等），标注引用 [n]。
+  无明确阈值依据时保守给出 NRS≥7 建议干预并标注依据；完全无依据则写"建议医生人工制定"。
+
+12.【健康教育·生活方式】health_education（3-5 条）、lifestyle（2-4 条）必须针对该患者诊断给出可执行的建议，逐条标注引用 [n]；无证据支撑的内容不得编造。
+
+13.【引用一致性】正文所有引用编号 [n] 必须与 evidence_basis 一一对应，编号从 [1] 连续递增，不得跳号、悬空引用或多出未引用的条目。
+
 ══════════════════════════════════
   患者真实情况
 ══════════════════════════════════
@@ -100,7 +123,7 @@ def build_prompt(patient: dict, diagnosis: str, discharge_summary: str, evidence
   "frequency": "随访频次（含引用标注 [n]）",
   "duration_days": <整数，动态生成>,
   "pain_type": "疼痛类型（从诊断和出院小结推断）",
-  "recheck_items": ["复查项目1", "复查项目2"],
+  "recheck_items": ["复查项目1（尽量标注 [n]）", "复查项目2"],
   "medication_adjustment": "用药调整建议（含引用标注 [n]）",
   "warning_threshold": "预警阈值（含引用标注 [n]）",
   "health_education": ["健康教育要点1 [n]", "健康教育要点2 [n]"],
@@ -128,7 +151,7 @@ def build_prompt(patient: dict, diagnosis: str, discharge_summary: str, evidence
   "frequency": "每日，出院后第1–2周；每周二、周五，第3–8周 [1][2]",
   "duration_days": 56,
   "pain_type": "神经病理性疼痛",
-  "recheck_items": ["疼痛NRS评分", "睡眠质量评估", "用药依从性检查", "感觉异常评估"],
+  "recheck_items": ["疼痛NRS评分 [3]", "睡眠质量评估 [2]", "用药依从性检查 [1]", "感觉异常评估 [2]"],
   "medication_adjustment": "继续口服加巴喷丁300mg tid [1]，如NRS≥5可考虑增量至600mg tid [2]",
   "warning_threshold": "NRS≥7 或连续3天睡眠质量差 [3]",
   "health_education": [

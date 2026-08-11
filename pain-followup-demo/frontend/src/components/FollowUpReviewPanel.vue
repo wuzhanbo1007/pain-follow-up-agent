@@ -40,7 +40,7 @@
       </select>
       <label class="text-xs text-gray-500 flex items-center gap-1">
         医生ID
-        <input v-model="doctorId" placeholder="DOC-001"
+        <input v-model="doctorId" placeholder="医生ID（数字，如 1）"
           class="lan-compact-control text-sm border border-gray-200 rounded-lg px-2 py-1 outline-none focus:border-blue-400" />
       </label>
       <div class="flex-1"></div>
@@ -108,7 +108,6 @@
                 <span v-if="currentPatient" class="text-xs text-blue-600 bg-blue-50 rounded-full px-2 py-0.5">{{ currentPatient.diagnosis }}</span>
                 <span v-if="currentPatient" class="text-xs text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">主治：{{ currentPatient.doctor_name }}</span>
               </div>
-              <div class="text-xs text-gray-400 mt-0.5 font-mono">{{ sessionDetail.session_id }}</div>
             </div>
             <div class="flex items-center gap-2">
               <span class="px-2 py-0.5 rounded text-xs font-medium" :class="riskMeta(sessionDetail.risk_result).cls">{{ riskMeta(sessionDetail.risk_result).label }}</span>
@@ -132,15 +131,15 @@
             <div v-if="sessionDetail.ai_review.summary" class="text-sm text-purple-800 leading-relaxed mb-2">{{ sessionDetail.ai_review.summary }}</div>
             <div v-if="sessionDetail.ai_review.risk_flags && sessionDetail.ai_review.risk_flags.length" class="flex flex-wrap gap-2 mb-2">
               <span v-for="(f, i) in sessionDetail.ai_review.risk_flags" :key="i"
-                class="text-xs px-2 py-0.5 rounded bg-red-50 text-red-600 border border-red-200">{{ f }}</span>
+                class="text-xs px-2 py-0.5 rounded bg-red-50 text-red-600 border border-red-200">{{ flagText(f) }}</span>
             </div>
             <div class="flex items-center gap-4 text-xs text-gray-500">
-              <span>完成度：<b class="text-purple-700">{{ sessionDetail.ai_review.completion_score }}</b>/100</span>
+              <span>完成度：<b class="text-purple-700">{{ reviewScore(sessionDetail.ai_review.completion_score) }}</b>/100</span>
             </div>
             <div v-if="sessionDetail.ai_review.suggestions && sessionDetail.ai_review.suggestions.length" class="mt-2 text-xs text-gray-600">
               <div class="font-medium text-gray-500 mb-1">建议</div>
               <ul class="list-disc pl-5 space-y-0.5">
-                <li v-for="(s, i) in sessionDetail.ai_review.suggestions" :key="i">{{ s }}</li>
+                <li v-for="(s, i) in sessionDetail.ai_review.suggestions" :key="i">{{ suggestionText(s) }}</li>
               </ul>
             </div>
           </div>
@@ -255,8 +254,34 @@ function riskMeta(rr) {
     : 'bg-gray-100 text-gray-500'
   return { label: level, cls }
 }
+// —— AI 审阅展示辅助：把结构化的 risk_flags / suggestions 渲染成纯文本。
+//    兼容 LLM 结构化对象（{type,detail,severity} / {priority,content}）与规则兜底字符串两种形态，
+//    避免把对象直接 {{ }} 输出成 JSON。
+function flagText(f) {
+  if (typeof f === 'string') return f
+  if (f && typeof f === 'object') {
+    const sev = f.severity ? `[${f.severity}] ` : ''
+    const type = f.type ? `${f.type}：` : ''
+    return `${sev}${type}${f.detail || ''}`
+  }
+  return String(f == null ? '' : f)
+}
+function suggestionText(s) {
+  if (typeof s === 'string') return s
+  if (s && typeof s === 'object') {
+    const p = s.priority ? `[${s.priority}] ` : ''
+    return `${p}${s.content || ''}`
+  }
+  return String(s == null ? '' : s)
+}
+// completion_score 可能是 int（规则兜底），也可能是 {total, breakdown}（LLM），统一取总分
+function reviewScore(v) {
+  if (v && typeof v === 'object') return Number(v.total ?? v.total_score ?? 0) || 0
+  const n = parseInt(v, 10)
+  return isNaN(n) ? 0 : n
+}
 
-const doctorId = ref('DOC-001')
+const doctorId = ref('1')
 const reviews = ref([])
 const selectedReview = ref(null)
 const sessionDetail = ref(null)

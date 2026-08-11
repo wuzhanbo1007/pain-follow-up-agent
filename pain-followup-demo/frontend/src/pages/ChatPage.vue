@@ -109,7 +109,7 @@
                 {{ msg.content }}
               </div>
               <div class="w-9 h-9 rounded-md bg-green-400 flex items-center justify-center text-white text-xs font-semibold shrink-0">
-                我
+                {{ patientSurname(msg.patient_id) }}
               </div>
             </template>
           </div>
@@ -152,6 +152,12 @@ const chatRef = ref(null)
 const demoPatientId = ref(null)       // 演示患者 ID（马淑珍）
 const allPatients = ref([])
 
+// 患者消息头像：显示患者姓氏（演示中用户扮演患者）
+function patientSurname(patientId) {
+  const p = allPatients.value.find(x => x.patient_id === patientId)
+  return (p?.name || '患')[0]
+}
+
 let socket = null
 
 // 诊断 → 科室映射
@@ -179,10 +185,12 @@ const chatList = computed(() => {
       if (!isDemo) continue  // 仅显示演示患者的对话
       const diag = p?.diagnosis || ''
       const doc = p?.doctor_name || ''
-      const dept = getDepartment(diag)
+      // 科室/医院优先取数据库（p.department_name/hospital_name），缺省用诊断映射兜底
+      const dept = p?.department_name || getDepartment(diag)
+      const hospital = p?.hospital_name || '协和医院'
       map[key] = {
         id: key,
-        name: `协和医院${dept} ${doc}`,
+        name: `${hospital}${dept} ${doc}`,
         avatarColor: 'bg-green-500',
         avatarText: '医',
         lastMsg: '',

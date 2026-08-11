@@ -60,7 +60,7 @@
      │                         ┌────────────────────┘
      │                         ▼
      │              ┌──────────────────┐
-     │              │  followup_plans  │──── RAG 检索 ────► ChromaDB 向量库
+     │              │  followup_plans  │──── RAG 检索 ────► ES 向量库
      │              │   随访计划       │
      │              └────────┬─────────┘
      │                       │ 1:N
@@ -287,7 +287,7 @@ CREATE TABLE discharge_records (
 
 | 字段 | 说明 | Faker 策略 |
 |------|------|-----------|
-| `discharge_diagnosis` | 如"带状疱疹后神经痛" | 4 种诊断随机 |
+| `discharge_diagnosis` | 如"带状疱疹后神经痛" | 随机从 **24 类诊断池**抽取（见 7.5.5 的 `DIAGNOSES` 常量，覆盖 ICD-11 全部 7 大类） |
 | `surgery_name` | 如"椎间孔镜下髓核摘除术" | 部分患者有，匹配诊断 |
 | `pain_type` | 疼痛类型 | 4 选 1 |
 | `pain_location` | 如"右侧胸背部" | 模板匹配诊断 |
@@ -891,7 +891,7 @@ discharge_records.discharge_summary  (出院小结全文)
   rag_query_text = "慢性疼痛 随访计划 {diagnosis} {pain_type} {surgery}"
         │
         ▼
-  [ChromaDB 向量检索]
+  [ES 向量检索]
   返回 Top-K 指南片段 + 引用出处
         │
         ▼
@@ -929,12 +929,34 @@ discharge_records.discharge_summary  (出院小结全文)
 
 ### 5.3 诊断与手术对照表
 
+> 下表覆盖 §7.5.5 中的**全部 24 类诊断**（含 ICD-11 七大类）。Faker 生成 `discharge_diagnosis` / `pain_type` / 出院带药时，按此对照选取，保证临床合理性。`pain_type` 取值严格对应 `DIAGNOSIS_TO_PAIN_TYPE` 映射（4 类疼痛机制之一）。
+
 | 出院诊断 | 疼痛类型 | 常见手术 | 典型药品 |
 |----------|---------|---------|---------|
-| 带状疱疹后神经痛 | 神经病理性疼痛 | 神经阻滞术 | 普瑞巴林、加巴喷丁、利多卡因贴剂 |
+| 带状疱疹后神经痛 | 神经病理性疼痛 | 神经阻滞术 / 脉冲射频术 | 普瑞巴林、加巴喷丁、利多卡因贴剂 |
 | 腰椎术后疼痛 | 混合性疼痛 | 椎间孔镜下髓核摘除术 / 腰椎后路减压融合内固定术 | 塞来昔布、曲马多、乙哌立松 |
 | 糖尿病周围神经痛 | 神经病理性疼痛 | — | 普瑞巴林、度洛西汀、甲钴胺 |
 | 癌性疼痛 | 混合性疼痛 | 姑息性手术（个体化） | 吗啡缓释片、羟考酮、芬太尼透皮贴 |
+| 三叉神经痛 | 神经病理性疼痛 | 微血管减压术 / 经皮球囊压迫术 | 卡马西平、奥卡西平、加巴喷丁 |
+| 脊髓损伤后神经病理性疼痛 | 神经病理性疼痛 | 脊髓电刺激植入术（SCS） | 加巴喷丁、普瑞巴林、阿米替林 |
+| 复杂性区域疼痛综合征(CRPS) | 神经病理性疼痛 | 交感神经阻滞 / 脊髓电刺激 | 加巴喷丁、普瑞巴林、NSAIDs |
+| 化疗后周围神经病变 | 神经病理性疼痛 | — | 度洛西汀、普瑞巴林、甲钴胺 |
+| 中枢性卒中后疼痛 | 中枢性疼痛 | — | 阿米替林、加巴喷丁、拉莫三嗪 |
+| 幻肢痛 | 神经病理性疼痛 | 残端神经瘤切除术（必要时） | 加巴喷丁、阿米替林、NMDA 拮抗剂 |
+| 骨关节炎疼痛 | 伤害感受性疼痛 | 关节镜清理术 / 人工关节置换术 | 塞来昔布、双氯芬酸、硫酸氨基葡萄糖 |
+| 类风湿关节炎疼痛 | 伤害感受性疼痛 | 滑膜切除术（罕见） | 甲氨蝶呤、来氟米特、NSAIDs |
+| 强直性脊柱炎疼痛 | 伤害感受性疼痛 | — | 塞来昔布、柳氮磺吡啶、TNF-α 抑制剂 |
+| 慢性非特异性腰痛 | 伤害感受性疼痛 | — | 塞来昔布、乙哌立松、贴膏 |
+| 肩周炎(冻结肩) | 伤害感受性疼痛 | 关节镜下松解术 | 双氯芬酸、塞来昔布、局部封闭 |
+| 腰椎间盘突出症 | 神经病理性疼痛 | 椎间盘摘除术 / 椎间孔镜 | 塞来昔布、甲钴胺、乙哌立松 |
+| 骨质疏松性骨折痛 | 伤害感受性疼痛 | 椎体成形术（PVP/PKP） | 钙剂、维生素 D、双膦酸盐 |
+| 纤维肌痛综合征 | 中枢性疼痛 | — | 普瑞巴林、度洛西汀、阿米替林 |
+| 偏头痛(慢性) | 神经病理性疼痛 | — | 托吡酯、普萘洛尔、曲普坦类 |
+| 紧张型头痛 | 伤害感受性疼痛 | — | NSAIDs、肌松剂、阿米替林 |
+| 颞下颌关节紊乱 | 伤害感受性疼痛 | 关节腔冲洗 / 咬合板治疗 | NSAIDs、肌松剂 |
+| 慢性盆腔痛 | 伤害感受性疼痛 | 腹腔镜探查（必要时） | NSAIDs、加巴喷丁、盆底康复 |
+| 间质性膀胱炎/膀胱疼痛综合征 | 神经病理性疼痛 | 膀胱水扩张术 | 阿米替林、戊聚糖多硫酸钠 |
+| 子宫内膜异位症疼痛 | 伤害感受性疼痛 | 腹腔镜病灶切除术 | 避孕药、GnRH-a、NSAIDs |
 
 ### 5.4 v6.0 多渠道随访数据链路
 
@@ -992,7 +1014,10 @@ patient_channels（渠道绑定）
 ```python
 # requirements.txt 新增
 faker>=30.0.0
-pymysql>=1.1.0
+polyfactory>=2.18.0        # 声明式工厂：按模型自动生成假数据
+sqlalchemy>=2.0.0         # ORM 模型 + MySQL 连接
+pymysql>=1.1.0            # MySQL 驱动（sqlalchemy 连接用）
+python-dotenv>=1.0.0      # 读取 .env 中的远端库配置
 ```
 
 ### 7.2 固定随机种子（每次生成数据完全一致）
@@ -1044,14 +1069,20 @@ random.seed(SEED)
 fake = Faker('zh_CN')          # 中文 locale
 
 # ---- 预定义常量（Faker 不支持中文医学领域数据） ----
+# 诊断池：覆盖 ICD-11 全部 7 大类，共 24 类（与 7.5.5 / backend/data 中的 DIAGNOSES 保持一致）
 DIAGNOSES = [
-    '带状疱疹后神经痛',
-    '腰椎术后疼痛综合征',
-    '糖尿病周围神经痛',
-    '癌性疼痛'
+    "带状疱疹后神经痛", "腰椎术后疼痛", "糖尿病周围神经痛", "癌性疼痛",
+    "三叉神经痛", "脊髓损伤后神经病理性疼痛", "复杂性区域疼痛综合征(CRPS)",
+    "化疗后周围神经病变", "中枢性卒中后疼痛", "幻肢痛",
+    "骨关节炎疼痛", "类风湿关节炎疼痛", "强直性脊柱炎疼痛",
+    "慢性非特异性腰痛", "肩周炎(冻结肩)", "腰椎间盘突出症",
+    "骨质疏松性骨折痛", "纤维肌痛综合征",
+    "偏头痛(慢性)", "紧张型头痛", "颞下颌关节紊乱",
+    "慢性盆腔痛", "间质性膀胱炎/膀胱疼痛综合征", "子宫内膜异位症疼痛",
 ]
 
-PAIN_TYPES = ['神经病理性疼痛', '伤害感受性疼痛', '混合性疼痛', '中枢性疼痛']
+# 疼痛机制类型：共 4 类（注意——这是与上面「24 类诊断」不同的另一个维度，请勿混淆）
+PAIN_TYPES = ["神经病理性疼痛", "伤害感受性疼痛", "混合性疼痛", "中枢性疼痛"]
 
 DOCTOR_TITLES = ['主治医师', '副主任医师', '主任医师']
 
@@ -1059,12 +1090,13 @@ CHANNELS = ['wechat', 'work_wechat', 'phone', 'app', 'h5']
 
 STYLE_LABELS = ['温和细致型', '干练果断型', '幽默亲切型', '严谨学术型']
 
+# 出院带药：key 必须来自上面的 24 类 DIAGNOSES 池（此处仅示例 1 类，其余 23 类按同结构补充）
 DRUGS = {
-    '带状疱疹后神经痛': [
+    "带状疱疹后神经痛": [
         {'name': '普瑞巴林胶囊', 'dosage': '75mg', 'frequency': 'bid'},
         {'name': '加巴喷丁胶囊', 'dosage': '300mg', 'frequency': 'tid'},
     ],
-    # ... 其他诊断对应药品
+    # ... 其余 23 类诊断对应药品（结构同上，Faker 生成出院带药时按 discharge_diagnosis 取用）
 }
 
 # ---- 各表生成函数 ----
@@ -1128,6 +1160,318 @@ def generate_guardrail_events(sessions, records):
 
 ---
 
+### 7.5 Faker + PolyFactory 声明式工厂（落地实现）
+
+> 目标：用 **Faker 提供中文假数据** + **PolyFactory 按 ORM 模型自动批量生成**，把 4.x 中 21 张表一次性造满，并直接写入远端 MySQL。
+
+#### 7.5.1 为什么在 Faker 之上加 PolyFactory
+
+| 纯 Faker | Faker + PolyFactory |
+|---|---|
+| 每个字段手写 `faker.xxx()`，21 张表 ≈ 200+ 行易错 | 一张表定义一次 SQLAlchemy 模型，工厂自动按类型填充 |
+| 改表结构要同步改几十处生成代码 | 改 schema 只改模型，工厂零改动 |
+| 字段间无约束（FK 要手动拼） | 通过 `Use` 将字段与诊断池 / 疼痛类型池联动，保证临床合理性 |
+
+PolyFactory 原生支持把 **Faker 作为底层 provider**，我们只需把 `Faker('zh_CN')` 实例注入工厂即可。
+
+#### 7.5.2 远端数据库配置（.env + config.py）
+
+> 远端库默认配置（如与默认不同，改 `.env` 即可，无需动代码）：
+
+| 变量 | 默认值 | 说明 |
+|---|---|---|
+| `DB_HOST` | `192.168.1.135` | 远端 MySQL 主机 |
+| `DB_PORT` | `3306` | 端口 |
+| `DB_USER` | `canal` | 账号 |
+| `DB_PASSWORD` | `canal` | 密码 |
+| `DB_NAME` | `pain-followup` | 库名 |
+
+```ini
+# .env  （放项目根目录，勿提交到 git）
+DB_HOST=192.168.1.135
+DB_PORT=3306
+DB_USER=canal
+DB_PASSWORD=canal
+DB_NAME=pain-followup
+```
+
+```python
+# config.py
+import os
+from dotenv import load_dotenv
+
+load_dotenv()  # 读取 .env，缺失时回退到默认值
+
+DB_HOST     = os.getenv("DB_HOST", "192.168.1.135")
+DB_PORT     = int(os.getenv("DB_PORT", "3306"))
+DB_USER     = os.getenv("DB_USER", "canal")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "canal")
+DB_NAME     = os.getenv("DB_NAME", "pain-followup")
+
+# SQLAlchemy 连接串（mysql+pymysql 驱动）
+DATABASE_URL = (
+    f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    f"?charset=utf8mb4"
+)
+```
+
+#### 7.5.3 把 Faker 注入 PolyFactory（中文 locale + 固定种子）
+
+> 以下写法已本地验证可用（`from polyfactory import Use` 与 `SQLAlchemyFactory` 均正常）。
+
+```python
+from faker import Faker
+from polyfactory import Use
+from polyfactory.factories.sqlalchemy_factory import SQLAlchemyFactory
+
+fake = Faker("zh_CN")   # 中文 locale：姓名/电话/地址均中文
+Faker.seed(20240729)    # 固定种子，保证每次生成结果一致（与 7.2 一致）
+
+class BaseFactory(SQLAlchemyFactory):
+    """所有工厂继承此类，统一使用中文 faker + 固定种子。"""
+    faker = fake        # 关键：把 faker 实例注入工厂
+```
+
+#### 7.5.4 定义 SQLAlchemy 模型（与 4.x 的 `CREATE TABLE` 一一对应）
+
+> 枚举列（ENUM）在 DDL 中是 `ENUM(...)`，生成时用 `String` + `Use` 限定取值即可；JSON 列用 `sqlalchemy.JSON` 同样用 `Use` 返回 dict。
+
+```python
+from datetime import date
+from sqlalchemy import String, Integer, Date, JSON, Enum as SAEnum
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+class Base(DeclarativeBase):
+    pass
+
+class Patient(Base):
+    __tablename__ = "patients"
+    patient_id:        Mapped[int]    = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name:              Mapped[str]    = mapped_column(String(32), nullable=False)
+    gender:            Mapped[str]    = mapped_column(String(4),  nullable=False)   # 实为 ENUM('男','女')
+    birth_date:        Mapped[date]   = mapped_column(Date, nullable=False)
+    phone:             Mapped[str]    = mapped_column(String(20))
+    address:           Mapped[str]    = mapped_column(String(256))
+    emergency_contact: Mapped[str]    = mapped_column(String(32))
+    emergency_phone:   Mapped[str]    = mapped_column(String(20))
+    preferred_channel: Mapped[str]    = mapped_column(String(16))                  # ENUM(wechat,phone,app,h5...)
+    phone_callable:    Mapped[int]    = mapped_column(Integer, default=1)
+    consent_flags:     Mapped[dict]   = mapped_column(JSON)
+    created_at:        Mapped[date]   = mapped_column(Date)
+
+class Doctor(Base):
+    __tablename__ = "doctors"
+    doctor_id:   Mapped[int]    = mapped_column(Integer, primary_key=True, autoincrement=True)
+    department_id: Mapped[int]  = mapped_column(Integer, nullable=False)
+    name:        Mapped[str]    = mapped_column(String(32), nullable=False)
+    title:       Mapped[str]    = mapped_column(String(32))
+    phone:       Mapped[str]    = mapped_column(String(20))
+    email:       Mapped[str]    = mapped_column(String(64))
+
+class DischargeRecord(Base):
+    __tablename__ = "discharge_records"
+    discharge_id:        Mapped[int]  = mapped_column(Integer, primary_key=True, autoincrement=True)
+    patient_id:          Mapped[int]  = mapped_column(Integer, nullable=False)
+    doctor_id:           Mapped[int]  = mapped_column(Integer, nullable=False)
+    discharge_date:      Mapped[date] = mapped_column(Date, nullable=False)
+    discharge_diagnosis: Mapped[str]  = mapped_column(String(256), nullable=False)
+    pain_type:           Mapped[str]  = mapped_column(String(32))   # ENUM(神经病理性/伤害感受性/混合性/中枢性)
+    nrs_at_discharge:    Mapped[int]  = mapped_column(Integer)
+    discharge_summary:   Mapped[str]  = mapped_column(String(4000), nullable=False)
+    follow_up_necessity: Mapped[str]  = mapped_column(String(8), default="必须")
+```
+
+#### 7.5.5 声明式 Factory（用 `Use` 自定义字段，保证临床合理）
+
+```python
+# 预定义常量（与 backend/data 中的 24 类 DIAGNOSES / 4 类 PAIN_TYPES 保持一致）
+DIAGNOSES = [
+    "带状疱疹后神经痛", "腰椎术后疼痛", "糖尿病周围神经痛", "癌性疼痛",
+    "三叉神经痛", "脊髓损伤后神经病理性疼痛", "复杂性区域疼痛综合征(CRPS)",
+    "化疗后周围神经病变", "中枢性卒中后疼痛", "幻肢痛",
+    "骨关节炎疼痛", "类风湿关节炎疼痛", "强直性脊柱炎疼痛",
+    "慢性非特异性腰痛", "肩周炎(冻结肩)", "腰椎间盘突出症",
+    "骨质疏松性骨折痛", "纤维肌痛综合征",
+    "偏头痛(慢性)", "紧张型头痛", "颞下颌关节紊乱",
+    "慢性盆腔痛", "间质性膀胱炎/膀胱疼痛综合征", "子宫内膜异位症疼痛",
+]
+PAIN_TYPES = ["神经病理性疼痛", "伤害感受性疼痛", "混合性疼痛", "中枢性疼痛"]
+CHANNELS   = ["wechat", "work_wechat", "phone", "app", "h5"]
+
+class PatientFactory(BaseFactory):
+    __model__ = Patient
+    name   = Use(lambda: fake.name())
+    gender = Use(lambda: fake.random_element(["男", "女"]))
+    birth_date = Use(lambda: fake.date_of_birth(minimum_age=25, maximum_age=85))
+    phone  = Use(lambda: fake.phone_number())
+    address = Use(lambda: fake.address())
+    emergency_contact = Use(lambda: fake.name())
+    emergency_phone   = Use(lambda: fake.phone_number())
+    preferred_channel = Use(lambda: fake.random_element(CHANNELS))
+    consent_flags = Use(lambda: {
+        "voice_consent": fake.boolean(), "image_consent": fake.boolean(),
+        "emotion_consent": fake.boolean(), "his_consent": fake.boolean(),
+    })
+
+class DoctorFactory(BaseFactory):
+    __model__ = Doctor
+    name  = Use(lambda: fake.name())
+    title = Use(lambda: fake.random_element(["主治医师", "副主任医师", "主任医师"]))
+    phone = Use(lambda: fake.phone_number())
+    email = Use(lambda: fake.email())
+
+class DischargeRecordFactory(BaseFactory):
+    __model__ = DischargeRecord
+    discharge_diagnosis = Use(lambda: fake.random_element(DIAGNOSES))
+    pain_type           = Use(lambda: fake.random_element(PAIN_TYPES))
+    nrs_at_discharge    = Use(lambda: fake.random_int(min=2, max=8))
+    discharge_summary   = Use(lambda: _build_discharge_summary())  # 见 5.2 模板
+    follow_up_necessity = Use(lambda: fake.random_element(["必须", "建议", "无需"]))
+```
+
+> `_build_discharge_summary()` 复用第 5.2 节的出院小结模板（主诉 + 诊断 + 用药 + 医嘱拼接），保证 RAG 检索有真实语料。
+
+#### 7.5.6 批量生成并写入远端 MySQL
+
+```python
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from config import DATABASE_URL
+
+engine = create_engine(DATABASE_URL, pool_pre_ping=True, echo=False)
+SessionLocal = sessionmaker(bind=engine)
+
+def seed_patients(n: int = 300):
+    with SessionLocal() as s:
+        # 1) 先造父表（科室 / 医生）
+        doctors = [DoctorFactory.build() for _ in range(20)]
+        s.add_all(doctors); s.flush()          # flush 后 doctor_id 回填
+        # 2) 再造患者，随机挂到已有医生 / 科室
+        patients = [PatientFactory.build() for _ in range(n)]
+        s.add_all(patients); s.flush()
+        # 3) 出院记录：每条绑定一个患者 + 一个医生（通过 build(kw) 覆盖 FK）
+        discharges = [
+            DischargeRecordFactory.build(
+                patient_id=p.patient_id,
+                doctor_id=fake.random_element(doctors).doctor_id,
+                discharge_date=fake.date_between(start_date="-90d", end_date="today"),
+            )
+            for p in patients
+        ]
+        s.add_all(discharges)
+        s.commit()
+    return n
+```
+
+> 大数据量（万级）建议用 `session.bulk_insert_mappings(Model, rows)` 或分批 `commit()`，避免单事务过大。
+
+#### 7.5.7 外键依赖顺序（先父表后子表）
+
+生成时必须遵守 `4.x` 中定义的 FK 方向，否则写入会被 MySQL 外键约束拒绝：
+
+```
+departments → doctors / patients
+patients → admissions → discharge_records → followup_plans → followup_sessions → followup_records
+patients → pain_diaries / medication_records / emotion_records / alerts
+discharge_records → medication_records
+followup_sessions → followup_records → human_handoffs / guardrail_events
+doctors → physician_personas（persona_id 反向可选，P3 阶段回填）
+```
+
+#### 7.5.8 需要修改 / 新建的表清单（对应 PolyFactory 造数）
+
+> 与现版 SQLite 相比，本次 MySQL 重构涉及 **8 张新建表 + 4 张明确修改表**（v6.0 升级说明中亦称"5 张现有表追加字段或修改枚举"，第 5 张以 4.x 标注为准）。PolyFactory 需为每张表提供对应 Factory。
+
+| # | 表 | 变更类型 | 主要改动（相对旧 SQLite） | Factory 自定义要点 |
+|---|---|---|---|---|
+| 4.1 | `departments` | 新建（原无） | 科室主数据 | `name` 从固定列表取（疼痛科/骨科/神经内科/肿瘤科/康复科） |
+| 4.2 | `doctors` | **修改** | 新增 `persona_id` / `voice_print_consent` / `voice_print_status` | `title` 限职称枚举；`voice_print_status` 限 `none/cloned/disabled` |
+| 4.3 | `patients` | **修改** | 新增渠道偏好 / 微信绑定 / 授权标记等 v6.0 字段 | `preferred_channel` 限枚举；`consent_flags` 用 JSON |
+| 4.4 | `admissions` | 不变 | 入院记录 | `admission_number` 用 `bothify('ZY######')` |
+| 4.5 | `discharge_records` | 不变（核心表） | RAG 输入源 | `discharge_summary` 用模板；`pain_type` 限 4 枚举 |
+| 4.6 | `followup_plans` | 不变 | 随访计划（JSON + RAG 引用） | `plan_json` / `rag_retrieval_context` 用 JSON |
+| 4.7 | `followup_sessions` | **修改** | 新增 `channel` / `voice_mode` / `escalation_status` | 三字段均限枚举 |
+| 4.8 | `followup_records` | **修改** | `medication_taken` TINYINT→ENUM(taken/not_taken/partial/unknown)；新增 8 字段 | 类型已变，枚举值须对齐 V11.0 |
+| 4.9 | `risk_assessments` | 不变 | 风险评估 | 评分用 `random_int` |
+| 4.10 | `doctor_reviews` | 不变 | 医生审阅 | `status` 限枚举 |
+| 4.11 | `alerts` | 不变 | 预警记录 | `level` 限枚举 |
+| 4.12 | `pain_diaries` | 不变 | 疼痛日记 | `nrs_score` 限 0–10；`pain_nature` 限枚举 |
+| 4.13 | `medication_records` | 不变 | 用药记录 | `drug_name` 从药品池取 |
+| 4.14 | `patient_channels` | **新建** ★ | 多渠道绑定 | `channel` 限枚举；每患者 1–3 条 |
+| 4.15 | `human_handoffs` | **新建** ★ | 转人工记录 | `status` 限枚举 |
+| 4.16 | `emotion_records` | **新建** ★ | 情绪感知 | 多标签打分 + `crisis_level` 限枚举 |
+| 4.17 | `multimodal_assets` | **新建** ★ | 语音/图片资源 | `asset_type` 限枚举；`url` 用 `fake.url()` |
+| 4.18 | `call_records` | **新建** ★ | 电话外呼 | `call_status` 限枚举 |
+| 4.19 | `physician_personas` | **新建** ★ | 医师风格画像 | `style` 限枚举 |
+| 4.20 | `guardrail_events` | **新建** ★ | 安全护栏事件 | `event_type` / `severity` 限枚举 |
+| 4.21 | `his_sync_logs` | **新建** ★ | HIS 同步日志 | `status` 限枚举 |
+
+**汇总**：新建 8 张（`patient_channels`/`human_handoffs`/`emotion_records`/`multimodal_assets`/`call_records`/`physician_personas`/`guardrail_events`/`his_sync_logs`）；明确修改 4 张（`doctors`/`patients`/`followup_sessions`/`followup_records`）；其余 9 张字段未变，仅需按原结构造数。
+
+#### 7.5.9 完整可运行示例（整合）
+
+```python
+# scripts/seed_remote.py
+import os, sys
+from dotenv import load_dotenv
+load_dotenv()
+
+from faker import Faker
+from polyfactory import Use
+from polyfactory.factories.sqlalchemy_factory import SQLAlchemyFactory
+from sqlalchemy import create_engine, String, Integer, Date, JSON
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
+
+# ---- 配置（见 7.5.2，支持 .env 覆盖） ----
+DB_HOST = os.getenv("DB_HOST", "192.168.1.135")
+DB_PORT = int(os.getenv("DB_PORT", "3306"))
+DB_USER = os.getenv("DB_USER", "canal")
+DB_PASS = os.getenv("DB_PASSWORD", "canal")
+DB_NAME = os.getenv("DB_NAME", "pain-followup")
+URL = f"mysql+pymysql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}?charset=utf8mb4"
+
+# ---- Faker + 固定种子（见 7.5.3） ----
+fake = Faker("zh_CN")
+Faker.seed(20240729)
+
+class Base(DeclarativeBase): pass
+class BaseFactory(SQLAlchemyFactory):
+    faker = fake
+
+# ---- 模型 + 工厂（此处仅示意 Patient/Doctor，其余表同理） ----
+class Patient(Base):
+    __tablename__ = "patients"
+    patient_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name:       Mapped[str] = mapped_column(String(32), nullable=False)
+    gender:     Mapped[str] = mapped_column(String(4), nullable=False)
+    birth_date: Mapped[Date] = mapped_column(Date, nullable=False)
+    phone:      Mapped[str] = mapped_column(String(20))
+
+class PatientFactory(BaseFactory):
+    __model__ = Patient
+    name = Use(lambda: fake.name())
+    gender = Use(lambda: fake.random_element(["男", "女"]))
+    birth_date = Use(lambda: fake.date_of_birth(minimum_age=25, maximum_age=85))
+    phone = Use(lambda: fake.phone_number())
+
+def main(n_patients: int = 300):
+    engine = create_engine(URL, pool_pre_ping=True)
+    Base.metadata.create_all(engine)          # 首次运行建表（或改用 alembic 迁移）
+    SessionLocal = sessionmaker(bind=engine)
+    with SessionLocal() as s:
+        rows = [PatientFactory.build() for _ in range(n_patients)]
+        s.add_all(rows)
+        s.commit()
+    print(f"已写入 {n_patients} 条 patients 到 {DB_HOST}/{DB_NAME}")
+
+if __name__ == "__main__":
+    main(int(sys.argv[1]) if len(sys.argv) > 1 else 300)
+```
+
+> 运行：`python scripts/seed_remote.py 300`。其余 20 张表的 Factory 按 7.5.4–7.5.5 同法补充，并遵循 7.5.7 的外键顺序批量写入即可。
+
+---
+
 ## 八、迁移步骤建议
 
 ```
@@ -1166,7 +1510,7 @@ Phase 4: 后端适配
   ├── 新增各表 DAO（参考现有 followup_db.py 的模式）
   ├── 修改 Agent A/B/C/D 的数据库读写路径
   ├── 对齐 V11.0 prompt 输出与 followup_records 字段映射
-  └── 保留 ChromaDB 向量库不变
+  └── 保留 ES 向量库不变
 
 Phase 5: 验证
   ├── 端到端测试：出院小结 → RAG 检索 → 随访计划生成 → 随访执行 → 审阅

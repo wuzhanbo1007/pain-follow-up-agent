@@ -16,6 +16,10 @@ from typing import Any
 
 from core.event_bus import EventBus
 from core.logging_config import get_logger
+
+# 手动演示患者（用户通过对话框与医护智能体对话，逐步推进；不用预置回复内容）。
+# 其余应随访患者走后台自动对话，使用各自的预置回复。
+MANUAL_DEMO_PATIENT_IDS = {15}
 from engine.followup_scheduler import apply_today_followup_flags, build_today_send_list
 from db.followup_db import (
     create_review,
@@ -25,7 +29,7 @@ from db.followup_db import (
     get_review_by_session,
     attach_ai_review,
 )
-from engine.react_core import run_tool_reflect, target_question
+from engine.react_core import run_tool_reflect, target_question, summarize_overflow
 from agents.summarizer import summarize_session
 
 log = get_logger("painsmart.followup_service")
@@ -55,6 +59,7 @@ class FollowupService:
     _patient_risk_records: list[dict[str, Any]] = field(default_factory=list)
     _sent_patient_ids: set = field(default_factory=set)  # 本轮已发出开场白的患者
     _pending_auto_lock: Any = field(default_factory=asyncio.Lock)
+    _auto_running_ids: set = field(default_factory=set)  # 仍在后台自动随访的患者 id（诊断 pending_auto 卡住用）
 
     # ReACT 范式：每位患者独立的思考状态
     _react_states: dict[str, dict[str, Any]] = field(default_factory=dict)
@@ -101,6 +106,7 @@ class FollowupService:
             self.reset_stats()
             # 重置演示协作状态
             self.demo_patient_ids = set()
+            self._auto_running_ids = set()
             self.pending_auto = 0
             self.demo_done_ids = set()
             self.final_emitted = False
@@ -146,7 +152,9 @@ class FollowupService:
                 ],
             })
 
-            demo_patients = [p for p in send_list if p.get("patient_id") in self.replies][:2]
+            # 手动演示患者固定为 MANUAL_DEMO_PATIENT_IDS（而非"有预置回复"推导），
+            # 否则自动患者配上预置回复后也会被误判为手动演示。
+            demo_patients = [p for p in send_list if p.get("patient_id") in MANUAL_DEMO_PATIENT_IDS]
             self.demo_patient_ids = {p.get("patient_id") for p in demo_patients}
             if demo_patients:
                 self.event_bus.publish("demo:patients_selected", {
@@ -172,7 +180,7 @@ class FollowupService:
                         create_review(
                             session_id=f"no-reply-{pid}",
                             patient_id=pid,
-                            track_status="pending_track",
+                            track_status="followup_done",
                             audit_snapshot={
                                 "source": "no_reply_skip",
                                 "consecutive_no_reply_days": p.get("consecutive_no_reply_days"),
@@ -202,6 +210,7 @@ class FollowupService:
                 self.event_bus.log(f"启动 {len(auto_patients)} 位自动患者的后台随访（对话+风险评估）...")
                 # 每位患者一个 async 任务：事件循环上并发运行，互不阻塞（Comet 风格）
                 for patient in auto_patients:
+                    self._auto_running_ids.add(patient.get("patient_id"))
                     asyncio.create_task(self._auto_run_patient(patient))
             else:
                 # 没有自动患者时，若也无手动演示则直接出最终统计
@@ -219,11 +228,15 @@ class FollowupService:
         patient_id = patient["patient_id"]
         patient["history"] = self.db.get_history(patient_id, 7)
 
-        # 用新版纯开场白生成（不含提问）
+        # 开场白由 LLM/模板生成，以自然问句结尾（让患者愿意回应）
         greeting = (await self.message_generator.generate_greeting(patient)) or \
-                   f"{patient.get('name', '')}您好，我是疼痛随访护士，来关心一下您今天的恢复情况。"
+                   f"{patient.get('name', '')}您好，我是疼痛随访护士，来关心一下您今天的恢复情况。今天感觉怎么样呀？"
 
-        first_msg = f"{greeting}\n\n今天感觉怎么样呀？"
+        # 若开场白已含问句则不再追加，避免重复提问
+        if any(q in greeting for q in ("？", "?")):
+            first_msg = greeting
+        else:
+            first_msg = f"{greeting}\n\n今天感觉怎么样呀？"
 
         # 初始化 ReACT 状态：空信息清单，LLM 自主决定第一轮怎么问
         self._react_states[patient_id] = {
@@ -368,7 +381,7 @@ class FollowupService:
             f"收到 {patient.get('name', patient_id)}({patient_id}) 的随访回复（共{rounds}轮）"
         )
 
-        # V9.1: 优先使用 function-calling tool 已产出的 parse/risk 结果
+        # 优先使用 function-calling tool 已产出的 parse/risk 结果
         tool_parsed = (react_state or {}).get("_tool_parsed") or {}
         tool_risk = (react_state or {}).get("_tool_risk_result") or {}
 
@@ -415,7 +428,7 @@ class FollowupService:
         )
 
         self.transition_to("SCORING")
-        # V9.1: 优先使用 tool 已算的 risk；若工具已返回 level，跳过重复计算
+        # 优先使用 tool 已算的 risk；若工具已返回 level，跳过重复计算
         if tool_risk.get("level") and tool_risk.get("total_score") is not None:
             risk_result = dict(tool_risk)
             self.event_bus.log(
@@ -500,7 +513,7 @@ class FollowupService:
                 create_review(
                     session_id=session_id,
                     patient_id=patient_id,
-                    track_status="pending_track",
+                    track_status="followup_done",
                     audit_snapshot={"source": "followup_service", "risk_result": risk_result,
                                     "ai_review": ai_review},
                 )
@@ -514,7 +527,7 @@ class FollowupService:
             create_review(
                 session_id=session_id,
                 patient_id=patient_id,
-                track_status="pending_track",
+                track_status="followup_done",
                 audit_snapshot={"source": "followup_service", "risk_result": risk_result,
                                 "ai_review": ai_review},
             )
@@ -555,7 +568,7 @@ class FollowupService:
         self.event_bus.log(f"模拟异常：{error_type}", level="warning")
 
     async def _react_reflect(self, patient: dict[str, Any], react_state: dict) -> dict:
-        """V9.1: 使用 function-calling 工具进行 ReACT 反思决策。
+        """使用 function-calling 工具进行 ReACT 反思决策。
 
         LLM 持工具（parse/history/risk/escalate/finalize）自主决策，
         一次调用完成解析+决策+追问生成（替代旧版 JSON prompt）。
@@ -576,12 +589,35 @@ class FollowupService:
         for m in conv:
             conversation.append({"role": m["role"], "content": m["content"]})
 
+        # —— 滚动摘要：对话超过 20 条后，被挤出窗口的最早消息分批（每批 10 条）由 LLM 压成摘要。
+        #    摘要随最近 20 条一起喂给模型，避免长对话早期信息彻底丢失。
+        #    注意：self.conversations 始终保留完整对话（用于落库与 D 审阅），
+        #          此处只影响「喂给 LLM 的上下文」，不截断原始记录。
+        summary = react_state.get("summary", "")
+        overflow = react_state.get("overflow", [])
+        summarized_until = react_state.get("summarized_until", 0)
+        if len(conv) > 20:
+            keep_start = len(conv) - 20
+            new_excess = conv[summarized_until:keep_start] if keep_start > summarized_until else []
+            if new_excess:
+                overflow.extend(new_excess)
+                react_state["summarized_until"] = keep_start
+            while len(overflow) >= 10:
+                batch = overflow[:10]
+                merged = await summarize_overflow(summary, batch)
+                if merged:  # LLM 摘要成功 → 更新累计摘要；失败 → 保留旧摘要并丢弃该批（等同旧截断）
+                    summary = merged
+                overflow = overflow[10:]
+            react_state["overflow"] = overflow
+            react_state["summary"] = summary
+
         inventory = react_state.get("info_inventory", {})
 
-        # V9.1: 用 function-calling 工具替代旧 JSON prompt
+        # 用 function-calling 工具替代旧 JSON prompt
         decision = await run_tool_reflect(
             patient, conversation, inventory,
             fallback_fn=lambda: self._react_fallback(patient_id, react_state),
+            early_summary=summary,
         )
 
         # 更新对话历史
@@ -684,6 +720,7 @@ class FollowupService:
         self._react_states.clear()
         self.reset_stats()
         self.demo_patient_ids = set()
+        self._auto_running_ids = set()
         self.pending_auto = 0
         self.demo_done_ids = set()
         self.final_emitted = False
@@ -752,6 +789,8 @@ class FollowupService:
         finally:
             async with self._pending_auto_lock:
                 self.pending_auto = max(0, self.pending_auto - 1)
+            self._auto_running_ids.discard(pid)
+            self.event_bus.log(f"[auto] {name}({pid}) 任务结束，剩余自动患者 {self.pending_auto}")
             self.event_bus.stats(self.stats)
             # 自动患者全部结束（且手动演示已完成/无手动演示）后再出最终统计
             self._maybe_emit_final_stats()
@@ -778,7 +817,11 @@ class FollowupService:
         if self.final_emitted:
             return
         if self.pending_auto > 0:
-            self.event_bus.log(f"[统计等待] 自动患者未全部完成 (pending_auto={self.pending_auto})")
+            running = sorted(str(x) for x in self._auto_running_ids)
+            self.event_bus.log(
+                f"[统计等待] 自动患者未全部完成 (pending_auto={self.pending_auto}, "
+                f"仍运行: {running or '未知'})"
+            )
             return
         if self.demo_patient_ids and not self.demo_patient_ids.issubset(self.demo_done_ids):
             self.event_bus.log(

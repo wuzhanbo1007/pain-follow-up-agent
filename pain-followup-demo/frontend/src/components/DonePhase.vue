@@ -111,7 +111,6 @@
                 <div class="flex items-center gap-2">
                   <span class="text-xs text-gray-400 w-6">{{ i + 1 }}</span>
                   <span class="text-xs text-gray-700">{{ p.name }}</span>
-                  <span class="text-xs text-gray-400">{{ p.patient_id }}</span>
                   <span class="text-xs text-gray-400">· {{ p.diagnosis }}</span>
                 </div>
                 <div class="flex items-center gap-2">
@@ -119,7 +118,7 @@
                     v-if="p.followup_detail && p.followup_detail.frequency"
                     class="text-xs px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 truncate max-w-[180px]"
                     :title="p.followup_detail.frequency"
-                  >{{ p.followup_detail.frequency }}</span>
+                  >{{ stripRefs(p.followup_detail.frequency) }}</span>
                   <span class="text-xs text-gray-400">{{ p.doctor_name }}</span>
                 </div>
               </div>
@@ -134,7 +133,7 @@
                 :key="i"
                 class="flex items-center justify-between py-1.5 px-3 rounded-lg bg-gray-50"
               >
-                <span class="text-xs text-gray-700">{{ p.name }} <span class="text-gray-400">{{ p.patient_id }}</span></span>
+                <span class="text-xs text-gray-700">{{ p.name }}</span>
                 <div class="flex items-center gap-2">
                   <span
                     v-if="p.matched_rule"
@@ -185,7 +184,6 @@
               :class="alert.risk_level === 'high' ? 'bg-red-500' : alert.risk_level === 'medium' ? 'bg-yellow-500' : alert.risk_level === 'callback' ? 'bg-orange-500' : 'bg-green-500'"
             ></span>
             <span class="text-xs text-gray-700 w-20 truncate">{{ alert.patient_name }}</span>
-            <span class="text-xs text-gray-400">{{ alert.patient_id }}</span>
             <span class="text-xs font-mono font-bold text-gray-800">{{ alert.risk_score }}分</span>
             <span
               class="text-xs px-1.5 py-0.5 rounded"
@@ -252,4 +250,9 @@ const reversedAlerts = computed(() => [...props.alerts].reverse())
 const followupPatients = computed(() => {
   return props.allPatients.filter(p => !p.skip_follow_up)
 })
+
+// 去掉频次文本里的引用标记 [1][2]（仅展示用，不修改库里的原始频次）
+function stripRefs(text) {
+  return String(text || '').replace(/\[\d+\]/g, '').replace(/\s+/g, ' ').trim()
+}
 </script>

@@ -1,6 +1,60 @@
-# PainSmart 9.0 — 慢性疼痛随访智能体
+# LANShing疼痛随访智能体
 
-基于 **FastAPI + LangGraph 多 Agent + RAG** 的慢性疼痛患者随访管理系统。
+基于 **FastAPI + LangGraph 多 Agent + RAG** 的LANShing疼痛随访智能体。
+
+---
+
+## 快速开始（拉取代码与运行）
+
+### 1. 拉取代码
+
+```bash
+git clone https://github.com/wuzhanbo1007/pain-follow-up-agent.git
+cd pain-follow-up-agent
+```
+
+已有仓库时同步最新代码：`git pull`
+
+### 2. 前置依赖
+
+| 依赖 | 版本 | 用途 |
+|---|---|---|
+| Python | 3.10+ | 后端 |
+| Node.js | 18+ | 前端 |
+| MySQL | 5.7+/8.x | 业务数据（21 表，库名 `pain-followup`；首次启动自动建表并播种 50 名模拟患者） |
+| Elasticsearch | 8.x | RAG 向量库（BM25 + kNN + RRF 混合检索） |
+
+> LLM / ES / MySQL 未配置时，后端自动降级为关键词 + 模板模式，Demo 不中断。
+
+### 3. 运行后端（端口 5000）
+
+```bash
+cd pain-followup-demo/backend
+
+# 创建虚拟环境并安装依赖
+python -m venv .venv
+# Windows：.venv\Scripts\activate ；macOS/Linux：source .venv/bin/activate
+pip install -r requirements.txt "unstructured[pdf]"
+
+# 配置环境变量（编辑 LLM_API_KEY / DB / ES / Embedding 等）
+cp .env.example .env
+
+# 启动（首次启动会自动建表并播种模拟患者数据）
+python app.py
+```
+
+### 4. 运行前端（端口 3000）
+
+```bash
+cd pain-followup-demo/frontend
+npm install
+npm run dev
+```
+
+### 5. 访问
+
+- 前端 Demo 页面：http://localhost:3000
+- 后端 API / WebSocket：http://localhost:5000
 
 ---
 
@@ -47,13 +101,13 @@ pain-followup-demo/
 │   │   ├── followup_scheduler.py # 随访排程规则引擎
 │   │   ├── tool_definitions.py #   Function-calling 工具定义
 │   │   └── tool_executor.py    #   工具执行器
-│   ├── db/                     # 持久化层（SQLite CRUD）
+│   ├── db/                     # 持久化层（MySQL，会话/计划/审阅 DAO）
 │   │   └── followup_db.py      #   会话/计划/审阅 DAO
 │   ├── data/                   # 种子数据
 │   │   ├── database.py         #   PatientDB + 数据库初始化
 │   │   └── patients.py         #   患者数据定义
 │   ├── prompts/                # LLM 提示词
-│   │   ├── react_nurse.py      #   C 号 ReACT 护士系统提示词
+│   │   ├── react_prompts.py    #   C 号 ReACT 护士/追问/滚动摘要提示词
 │   │   ├── reply_parsing.py    #   患者回复结构化解析提示词
 │   │   ├── plan_generation.py  #   A 号 计划生成提示词
 │   │   ├── plan_system.py      #   A 号 强制 JSON 输出提示词
@@ -76,11 +130,11 @@ pain-followup-demo/
 │   │   ├── container.py        #   DI 容器
 │   │   ├── event_bus.py        #   事件总线
 │   │   └── realtime.py         #   WebSocket 桥接
-│   └── knowledge/              # RAG 知识库（Chroma）
+│   └── knowledge/              # RAG 知识库（ES）
 │       ├── loader.py           #   PDF/文档加载（Unstructured 自动解析 + OCR）
 │       ├── splitter.py         #   中文分块（按标题层级 + 800字递归切分）
 │       ├── embeddings.py       #   Embedding 提供方（SiliconFlow / 本地 bge-m3）
-│       ├── store.py            #   Chroma 向量库封装
+│       ├── es_store.py         #   ES 向量库封装（混合检索）
 │       ├── retriever.py        #   检索入口（指南/共识引用溯源）
 │       ├── ingest.py           #   批量入库入口
 │       └── config.py           #   RAG 配置
@@ -90,12 +144,11 @@ pain-followup-demo/
 │       ├── pages/ChatPage.vue  #   微信聊天页
 │       └── components/         #   审阅/对话/控制面板等
 └── knowledge_base/             # 知识库语料（不入 git）
-    ├── raw/                    # 原始 PDF 文档
-    │   ├── consensus/          #   专家共识
-    │   ├── guidelines/         #   临床指南
-    │   ├── pathways/           #   诊疗路径
-    │   └── internal/           #   内部文档
-    └── vector_store/           # Chroma 持久化目录
+    └── raw/                    # 原始 PDF 文档
+        ├── consensus/          #   专家共识
+        ├── guidelines/         #   临床指南
+        ├── pathways/           #   诊疗路径
+        └── internal/           #   内部文档
 ```
 
 ---
@@ -131,63 +184,34 @@ LLM 在 `engine/react_core.py` 的 `run_tool_reflect` 中持 5 个 function-call
 
 ---
 
-## 五、快速开始
+## 五、常用命令与环境变量
 
-### 前置要求
-
-- Python 3.10+
-- Node.js 18+
-
-### 后端（端口 5000）
-
-```bash
-# 进入后端目录
-cd pain-followup-demo/backend
-
-# 安装 uv（统一包管理器）
-pip install uv
-
-# 安装依赖（自动创建 .venv）
-uv pip install -r requirements.txt "unstructured[pdf]"
-
-# 配置环境变量
-cp .env.example .env
-# 编辑 .env，填入 LLM_API_KEY 等配置
-
-# 运行
-uv run python app.py
-```
-
-### 前端（端口 3000）
-
-```bash
-cd pain-followup-demo/frontend
-npm install && npm run dev
-# 打开 http://localhost:3000
-```
+> 首次拉取与运行请见文首「快速开始（拉取代码与运行）」。
 
 ### 后续常用命令
 
 ```bash
 # 后端运行
-uv run python app.py
+python app.py
 
 # 新增包
-uv pip install 包名
+pip install 包名
 
 # 导入 PDF 到知识库
-uv run python -m knowledge.ingest
+python -m knowledge.ingest
 
 # 查看向量库状态
-uv run python -m knowledge.ingest --status
+python -m knowledge.ingest --status
 ```
 
 ### 环境变量（.env）
 
 ```ini
-LLM_API_KEY=sk-xxxx          # DeepSeek / OpenAI 兼容 Key
+LLM_API_KEY=sk-xxxx          # DeepSeek / Qwen 等 OpenAI 兼容 Key
 LLM_BASE_URL=https://api.deepseek.com
 LLM_MODEL=deepseek-chat
+DB_HOST=127.0.0.1            # MySQL 地址
+ES_HOST=http://127.0.0.1:9200 # Elasticsearch 地址
 DEMO_TODAY=2026-07-29        # 可选：固定演示日期
 ```
 
@@ -217,15 +241,14 @@ splitter.py → 按中文标题层级切分 → 800 字/块，重叠 100 字
 embeddings.py → SiliconFlow API（BAAI/bge-m3）→ 1024 维向量
        │
        ▼
-store.py / es_store.py → Chroma 或 Elasticsearch
+es_store.py → Elasticsearch
 ```
 
 ### 向量库
 
-| 类型 | 后端 | 适用场景 |
-|------|------|---------|
-| Chroma | 本地文件（默认） | 开发 / 内网 Demo，零运维 |
-| Elasticsearch | 远程 ES 8.x | 生产环境，支持 BM25+kNN 混合检索 |
+| 后端 | 说明 |
+|------|------|
+| Elasticsearch 8.x | 唯一后端，支持 BM25+kNN+RRF 混合检索 |
 
 ### 当前语料
 
@@ -242,9 +265,9 @@ store.py / es_store.py → Chroma 或 Elasticsearch
 | Agent 编排 | LangGraph StateGraph |
 | Function Calling | ChatOpenAI.bind_tools() |
 | 文档解析 | Unstructured（自动识别格式 + OCR） |
-| 向量库 | ChromaDB（BAAI/bge-m3 embedding） |
+| 向量库 | Elasticsearch（BAAI/bge-m3 embedding） |
 | Embedding | SiliconFlow API / 本地 sentence-transformers |
-| 数据库 | SQLite（`data/history.db`），计划迁移 MySQL |
+| 数据库 | MySQL（21 表，库名 pain-followup） |
 | 包管理 | uv |
 | 前端 | Vue 3 + Pinia + Tailwind CSS + Vite |
 | 实时通信 | Socket.IO (server + client) |

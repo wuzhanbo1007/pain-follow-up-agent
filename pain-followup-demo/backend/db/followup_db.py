@@ -1,105 +1,195 @@
+# -*- coding: utf-8 -*-
 """
-随访计划 / 会话 / 审阅 数据访问层（v3.0 新增表）
-对应需求文档：二(2.3) followup_plan、三(3.3) followup_session/followup_review
+随访计划 / 会话 / 审阅 数据访问层（MySQL 版，对应《数据库重构方案_MySQL版.md》§4.6/4.7/4.10）
 
-原则：
-  - 既有患者数据、预置回复**只读不写**（沿用 v2.0 约束）；
-  - 本文件操作的是新增的 3 张表，属于新能力，可写。
-  - 所有审阅/修改均落 audit_snapshot，满足医疗审计（风险 4）。
+· 彻底移除 SQLite；所有读写走 SQLAlchemy 2.0 会话，目标表为 followup_plans /
+  followup_sessions / doctor_reviews（21 表设计中的真实表名）。
+· 函数签名与旧版保持一致，返回 dict 的字段键亦尽量兼容（doctor_score/comment/reviewer_id
+  为 score/comment/doctor_id 的兼容别名；guideline_citations 为 rag_retrieval_context 别名），
+  以便 agents / services / routes 无需改动即可平滑切换。
+· followup_review 表在 21 表设计中改名为 doctor_reviews，字段 doctor_score→score、
+  doctor_comment→comment、reviewer_id→doctor_id，本层在映射时完成转换。
 """
-import json
-import sqlite3
-import uuid
-from datetime import datetime
+from datetime import date, datetime
 
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import sessionmaker
 
-def _now():
-    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-
-def _row_to_dict(row):
-    d = dict(row)
-    # JSON 字段解析
-    for key in ("plan_json", "guideline_citations", "transcript_json",
-                "risk_result", "audit_snapshot", "original_snapshot"):
-        if key in d and isinstance(d[key], str):
-            try:
-                d[key] = json.loads(d[key])
-            except (json.JSONDecodeError, TypeError):
-                pass
-    return d
+from data.db_config import DATABASE_URL
+from data.models_mysql import (
+    Base, FollowupPlan, FollowupSession, DoctorReview, DischargeRecord,
+)
 
 
 # ======================================================================
-# followup_plan
+# 引擎 / Session（懒加载，便于测试时重定向 DATABASE_URL）
+# ======================================================================
+_ENGINE = None
+_SessionLocal = None
+
+
+def _get_sessionmaker():
+    global _ENGINE, _SessionLocal
+    if _SessionLocal is None:
+        _ENGINE = create_engine(DATABASE_URL, pool_pre_ping=True, future=True)
+        _SessionLocal = sessionmaker(bind=_ENGINE, future=True)
+    return _SessionLocal
+
+
+def _session():
+    return _get_sessionmaker()()
+
+
+def _resolve_discharge(patient_id):
+    """返回 (discharge_id, doctor_id)；无出院记录时返回 (None, None)。"""
+    with _session() as s:
+        dis = s.scalars(
+            select(DischargeRecord)
+            .where(DischargeRecord.patient_id == patient_id)
+            .order_by(DischargeRecord.discharge_date.desc())
+        ).first()
+        if dis:
+            return dis.discharge_id, dis.doctor_id
+    return None, None
+
+
+def _resolve_doctor(patient_id):
+    _, did = _resolve_discharge(patient_id)
+    return did
+
+
+# ======================================================================
+# dict 构造（兼容旧字段键）
+# ======================================================================
+def _plan_to_dict(p):
+    return {
+        "plan_id": p.plan_id,
+        "patient_id": p.patient_id,
+        "discharge_id": p.discharge_id,
+        "doctor_id": p.doctor_id,
+        "plan_json": p.plan_json,
+        "rag_query_text": p.rag_query_text,
+        # 21 表设计中本列为 rag_retrieval_context；以下别名保持旧调用兼容
+        "rag_retrieval_context": p.rag_retrieval_context,
+        "guideline_citations": p.rag_retrieval_context,
+        "status": p.status,
+        "created_by": p.created_by,
+        "original_snapshot": p.original_snapshot,
+        "created_at": p.created_at.isoformat() if p.created_at else None,
+        "reviewed_at": p.reviewed_at.isoformat() if p.reviewed_at else None,
+    }
+
+
+def _session_to_dict(s):
+    return {
+        "session_id": s.session_id,
+        "patient_id": s.patient_id,
+        "plan_id": s.plan_id,
+        "session_status": s.session_status,
+        "transcript_json": s.transcript_json or [],
+        "agent_summary": s.agent_summary,
+        "channel": s.channel,
+        "voice_mode": s.voice_mode,
+        "escalation_status": s.escalation_status,
+        "created_at": s.created_at.isoformat() if s.created_at else None,
+        "completed_at": s.completed_at.isoformat() if s.completed_at else None,
+        # 旧 followup_session 的 risk_result 列已在 21 表设计中移除；下游用 .get 安全读取
+    }
+
+
+def _review_to_dict(r):
+    return {
+        "review_id": r.review_id,
+        "session_id": r.session_id,
+        "patient_id": r.patient_id,
+        # 兼容别名（旧列名 → 新列名）
+        "doctor_score": r.score,
+        "doctor_comment": r.comment,
+        "reviewer_id": r.doctor_id,
+        # 真实列名
+        "score": r.score,
+        "comment": r.comment,
+        "doctor_id": r.doctor_id,
+        "track_status": r.track_status,
+        "ai_review": r.ai_review,
+        "audit_snapshot": r.audit_snapshot,
+        "reviewed_at": r.reviewed_at.isoformat() if r.reviewed_at else None,
+        "created_at": r.created_at.isoformat() if r.created_at else None,
+    }
+
+
+# ======================================================================
+# followup_plans
 # ======================================================================
 def create_plan(patient_id, plan_json, discharge_summary=None,
                citations=None, doctor_id=None, status="draft"):
-    conn = sqlite3.connect(_db_path())
-    conn.row_factory = sqlite3.Row
-    plan_id = f"PLAN-{uuid.uuid4().hex[:12].upper()}"
-    now = _now()
-    conn.execute(
-        """INSERT INTO followup_plan
-           (plan_id, patient_id, discharge_summary, plan_json, guideline_citations, status, doctor_id, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-        (plan_id, patient_id, discharge_summary,
-         json.dumps(plan_json, ensure_ascii=False),
-         json.dumps(citations or [], ensure_ascii=False),
-         status, doctor_id, now),
-    )
-    conn.commit()
-    conn.close()
-    return plan_id
+    """写入一条随访计划；自动解析 discharge_id / doctor_id（NOT NULL 兜底为 0）。"""
+    dis_id, d_id = _resolve_discharge(patient_id)
+    if doctor_id is None:
+        doctor_id = d_id
+    with _session() as s:
+        p = FollowupPlan(
+            patient_id=patient_id,
+            discharge_id=dis_id if dis_id is not None else 0,
+            doctor_id=doctor_id if doctor_id is not None else 0,
+            plan_json=plan_json or {},
+            rag_retrieval_context=citations or [],
+            status=status,
+            created_by="AI",
+        )
+        s.add(p)
+        s.flush()
+        pid = p.plan_id
+        s.commit()
+        return pid
 
 
 def get_plan(plan_id):
-    conn = sqlite3.connect(_db_path())
-    conn.row_factory = sqlite3.Row
-    row = conn.execute("SELECT * FROM followup_plan WHERE plan_id=?", (plan_id,)).fetchone()
-    conn.close()
-    return _row_to_dict(row) if row else None
+    try:
+        plan_id = int(plan_id)
+    except (TypeError, ValueError):
+        return None
+    with _session() as s:
+        p = s.get(FollowupPlan, plan_id)
+        return _plan_to_dict(p) if p else None
 
 
 def get_latest_plan(patient_id):
-    conn = sqlite3.connect(_db_path())
-    conn.row_factory = sqlite3.Row
-    row = conn.execute(
-        "SELECT * FROM followup_plan WHERE patient_id=? ORDER BY created_at DESC LIMIT 1",
-        (patient_id,),
-    ).fetchone()
-    conn.close()
-    return _row_to_dict(row) if row else None
+    with _session() as s:
+        p = s.scalars(
+            select(FollowupPlan)
+            .where(FollowupPlan.patient_id == patient_id)
+            .order_by(FollowupPlan.created_at.desc())
+        ).first()
+        return _plan_to_dict(p) if p else None
 
 
 def list_plans_by_doctor(doctor_id):
-    conn = sqlite3.connect(_db_path())
-    conn.row_factory = sqlite3.Row
-    rows = conn.execute(
-        "SELECT * FROM followup_plan WHERE doctor_id=? ORDER BY created_at DESC",
-        (doctor_id,),
-    ).fetchall()
-    conn.close()
-    return [_row_to_dict(r) for r in rows]
+    try:
+        doctor_id = int(doctor_id)
+    except (TypeError, ValueError):
+        return []
+    with _session() as s:
+        rows = s.scalars(
+            select(FollowupPlan)
+            .where(FollowupPlan.doctor_id == doctor_id)
+            .order_by(FollowupPlan.created_at.desc())
+        ).all()
+        return [_plan_to_dict(r) for r in rows]
 
 
 def list_all_latest_plans():
-    """每位患者最新一条随访计划（按 patient_id 去重），供前端 initial load 用。"""
-    conn = sqlite3.connect(_db_path())
-    conn.row_factory = sqlite3.Row
-    rows = conn.execute("""
-        SELECT * FROM followup_plan
-        WHERE plan_id IN (
-            SELECT plan_id FROM (
-                SELECT plan_id,
-                       ROW_NUMBER() OVER (PARTITION BY patient_id ORDER BY created_at DESC) rn
-                FROM followup_plan
-            ) WHERE rn = 1
-        )
-        ORDER BY patient_id
-    """).fetchall()
-    conn.close()
-    return [_row_to_dict(r) for r in rows]
+    """每位患者最新一条随访计划（按 patient_id 去重）。"""
+    with _session() as s:
+        rows = s.scalars(
+            select(FollowupPlan)
+            .order_by(FollowupPlan.patient_id, FollowupPlan.created_at.desc())
+        ).all()
+    latest = {}
+    for r in rows:
+        if r.patient_id not in latest:
+            latest[r.patient_id] = r
+    return [_plan_to_dict(r) for r in latest.values()]
 
 
 def approve_plan(plan_id, doctor_id=None):
@@ -109,386 +199,380 @@ def approve_plan(plan_id, doctor_id=None):
 
 def modify_plan(plan_id, plan_json, doctor_id=None):
     """医生修改后确认：保留原文快照，状态→modified"""
-    conn = sqlite3.connect(_db_path())
-    conn.row_factory = sqlite3.Row
-    old = conn.execute("SELECT plan_json FROM followup_plan WHERE plan_id=?", (plan_id,)).fetchone()
-    snapshot = old["plan_json"] if old else None
-    now = _now()
-    conn.execute(
-        """UPDATE followup_plan
-           SET plan_json=?, status='modified', doctor_id=?,
-               original_snapshot=?, reviewed_at=?
-           WHERE plan_id=?""",
-        (json.dumps(plan_json, ensure_ascii=False), doctor_id,
-         snapshot, now, plan_id),
-    )
-    conn.commit()
-    conn.close()
-    return True
+    try:
+        plan_id = int(plan_id)
+    except (TypeError, ValueError):
+        return False
+    with _session() as s:
+        p = s.get(FollowupPlan, plan_id)
+        if not p:
+            return False
+        p.original_snapshot = p.plan_json
+        p.plan_json = plan_json
+        p.status = "modified"
+        if doctor_id is not None:
+            p.doctor_id = doctor_id
+        p.reviewed_at = datetime.now()
+        s.commit()
+        return True
 
 
 def batch_approve_plans(doctor_id=None, only_draft=True):
-    """批量同意：将待审阅（status='draft'）或全部未决的随访计划一次性置为 approved。
-
-    用于「批量同意」按钮：避免医生逐一点击。
-    返回被更新的计划数量（**按患者去重后的患者数**）与 plan_id 列表。
-
-    关键：随访计划可能因人反复生成而产生「同一患者的多份计划」（重复行），
-    因此必须按 patient_id 去重——每位患者只取最新一条计划来同意，
-    否则批量同意人数会远超患者总数（如 666 条计划被数成 666 人）。
-    “修改（modified）”视为该患者计划的一部分，计入其 1 个名额，不额外加算。
-    - only_draft=True：同意每位患者最新一条 status IN ('draft','modified') 的计划
-    - only_draft=False：把 draft/modified 全部置为 approved（同样按患者去重）。
-    """
-    conn = sqlite3.connect(_db_path())
-    conn.row_factory = sqlite3.Row
-    if only_draft:
-        # 每位患者只取最新一条 draft/modified 计划（去重），避免重复生成导致多份被重复计数
-        rows = conn.execute(
-            """SELECT plan_id FROM (
-                   SELECT plan_id,
-                          ROW_NUMBER() OVER (
-                              PARTITION BY patient_id ORDER BY created_at DESC
-                          ) rn
-                   FROM followup_plan
-                   WHERE status IN ('draft', 'modified')
-               ) WHERE rn = 1"""
-        ).fetchall()
-    else:
-        rows = conn.execute(
-            """SELECT plan_id FROM (
-                   SELECT plan_id,
-                          ROW_NUMBER() OVER (
-                              PARTITION BY patient_id ORDER BY created_at DESC
-                          ) rn
-                   FROM followup_plan
-                   WHERE status IN ('draft', 'modified')
-               ) WHERE rn = 1"""
-        ).fetchall()
-    plan_ids = [r["plan_id"] for r in rows]
-    now = _now()
-    for pid in plan_ids:
-        conn.execute(
-            "UPDATE followup_plan SET status='approved', doctor_id=?, reviewed_at=? WHERE plan_id=?",
-            (doctor_id, now, pid),
-        )
-    conn.commit()
-    conn.close()
+    """批量同意：按患者去重后，将每位患者最新一条 draft/modified 计划置为 approved。"""
+    with _session() as s:
+        rows = s.scalars(
+            select(FollowupPlan)
+            .order_by(FollowupPlan.patient_id, FollowupPlan.created_at.desc())
+        ).all()
+    latest = {}
+    for r in rows:
+        if r.patient_id not in latest:
+            latest[r.patient_id] = r
+    plan_ids = [
+        r.plan_id for r in latest.values()
+        if r.status in ("draft", "modified")
+    ]
+    now = datetime.now()
+    with _session() as s:
+        for pid in plan_ids:
+            p = s.get(FollowupPlan, pid)
+            if p:
+                p.status = "approved"
+                if doctor_id is not None:
+                    p.doctor_id = doctor_id
+                p.reviewed_at = now
+        s.commit()
     return {"approved": len(plan_ids), "plan_ids": plan_ids}
 
 
 def _update_plan_status(plan_id, status, doctor_id=None):
-    conn = sqlite3.connect(_db_path())
-    conn.execute(
-        "UPDATE followup_plan SET status=?, doctor_id=?, reviewed_at=? WHERE plan_id=?",
-        (status, doctor_id, _now(), plan_id),
-    )
-    conn.commit()
-    conn.close()
-    return True
+    try:
+        plan_id = int(plan_id)
+    except (TypeError, ValueError):
+        return False
+    with _session() as s:
+        p = s.get(FollowupPlan, plan_id)
+        if not p:
+            return False
+        p.status = status
+        if doctor_id is not None:
+            p.doctor_id = doctor_id
+        p.reviewed_at = datetime.now()
+        s.commit()
+        return True
 
 
 # ======================================================================
-# followup_session
+# followup_sessions
 # ======================================================================
 def create_session(patient_id, transcript_json, risk_result=None,
                   agent_summary=None, plan_id=None):
-    conn = sqlite3.connect(_db_path())
-    conn.row_factory = sqlite3.Row
-    session_id = f"SESS-{uuid.uuid4().hex[:12].upper()}"
-    conn.execute(
-        """INSERT INTO followup_session
-           (session_id, patient_id, plan_id, transcript_json, risk_result, agent_summary, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?)""",
-        (session_id, patient_id, plan_id,
-         json.dumps(transcript_json, ensure_ascii=False),
-         json.dumps(risk_result or {}, ensure_ascii=False),
-         agent_summary, _now()),
-    )
-    conn.commit()
-    conn.close()
-    return session_id
+    """写入一条随访会话；risk_result 在 21 表设计中已无对应列，忽略。"""
+    with _session() as s:
+        if plan_id is None:
+            # plan_id 列 NOT NULL：未指定时回退到该患者最新计划，避免 INSERT 失败
+            p = s.scalars(
+                select(FollowupPlan)
+                .where(FollowupPlan.patient_id == patient_id)
+                .order_by(FollowupPlan.created_at.desc())
+            ).first()
+            plan_id = p.plan_id if p else None
+        sess = FollowupSession(
+            patient_id=patient_id,
+            plan_id=int(plan_id) if plan_id is not None else None,
+            transcript_json=transcript_json or [],
+            agent_summary=agent_summary or "",
+            channel="app",
+            completed_at=datetime.now(),  # channel/completed_at 列 NOT NULL 无默认，给占位
+            session_status="ongoing",
+        )
+        s.add(sess)
+        s.flush()
+        sid = sess.session_id
+        s.commit()
+        return sid
 
 
 def get_today_session(patient_id):
     """返回该患者今天已有的随访会话（若有），用于去重，避免重复生成记录。"""
-    today = datetime.now().strftime("%Y-%m-%d")
-    conn = sqlite3.connect(_db_path())
-    conn.row_factory = sqlite3.Row
-    row = conn.execute(
-        "SELECT * FROM followup_session WHERE patient_id=? AND created_at LIKE ? "
-        "ORDER BY created_at DESC LIMIT 1",
-        (patient_id, today + "%"),
-    ).fetchone()
-    conn.close()
-    return _row_to_dict(row) if row else None
+    today = date.today().isoformat()
+    with _session() as s:
+        rows = s.scalars(
+            select(FollowupSession)
+            .where(FollowupSession.patient_id == patient_id)
+            .order_by(FollowupSession.created_at.desc())
+        ).all()
+    for r in rows:
+        if r.created_at and r.created_at.strftime("%Y-%m-%d") == today:
+            return _session_to_dict(r)
+    return None
 
 
 def update_session(session_id, transcript_json=None, risk_result=None,
                    agent_summary=None):
-    """更新已有会话的对话/风险/摘要（同日去重时复用同一条记录）。"""
-    conn = sqlite3.connect(_db_path())
-    conn.row_factory = sqlite3.Row
-    conn.execute(
-        """UPDATE followup_session SET
-              transcript_json=COALESCE(?, transcript_json),
-              risk_result=COALESCE(?, risk_result),
-              agent_summary=COALESCE(?, agent_summary)
-           WHERE session_id=?""",
-        (json.dumps(transcript_json, ensure_ascii=False) if transcript_json is not None else None,
-         json.dumps(risk_result or {}, ensure_ascii=False) if risk_result is not None else None,
-         agent_summary, session_id),
-    )
-    conn.commit()
-    conn.close()
+    """更新已有会话的对话/摘要（risk_result 已无对应列，忽略）。"""
+    try:
+        session_id = int(session_id)
+    except (TypeError, ValueError):
+        return False
+    with _session() as s:
+        sess = s.get(FollowupSession, session_id)
+        if not sess:
+            return False
+        if transcript_json is not None:
+            sess.transcript_json = transcript_json
+        if agent_summary is not None:
+            sess.agent_summary = agent_summary
+        s.commit()
+        return True
 
 
 def get_session(session_id):
-    conn = sqlite3.connect(_db_path())
-    conn.row_factory = sqlite3.Row
-    row = conn.execute("SELECT * FROM followup_session WHERE session_id=?", (session_id,)).fetchone()
-    conn.close()
-    if not row:
+    try:
+        session_id = int(session_id)
+    except (TypeError, ValueError):
         return None
-    d = _row_to_dict(row)
-    d["ai_review"] = get_review_ai(session_id)
-    return d
+    with _session() as s:
+        sess = s.get(FollowupSession, session_id)
+        if not sess:
+            return None
+        d = _session_to_dict(sess)
+        d["ai_review"] = get_review_ai(session_id)
+        return d
 
 
 def get_review_ai(session_id):
-    """从 review 行的 audit_snapshot 取出 AI（D 号 Agent）审阅意见。
-
-    同一会话可能存在多条 review（随访自动生成 + 医生手动提交），
-    故倒序遍历，返回首个含 ai_review 的行，确保 AI 意见不丢失。
-    """
-    conn = sqlite3.connect(_db_path())
-    conn.row_factory = sqlite3.Row
-    rows = conn.execute(
-        "SELECT audit_snapshot FROM followup_review WHERE session_id=? ORDER BY reviewed_at DESC",
-        (session_id,),
-    ).fetchall()
-    conn.close()
-    for row in rows:
-        if not row["audit_snapshot"]:
-            continue
-        try:
-            snap = json.loads(row["audit_snapshot"])
-        except (json.JSONDecodeError, TypeError):
-            continue
-        ai = snap.get("ai_review")
-        if ai:
-            return ai
-    return None
+    """返回该会话最新一条审阅中的 AI（D 号 Agent）审阅意见。"""
+    try:
+        session_id = int(session_id)
+    except (TypeError, ValueError):
+        return None
+    with _session() as s:
+        r = s.scalars(
+            select(DoctorReview)
+            .where(DoctorReview.session_id == session_id)
+            .order_by(DoctorReview.reviewed_at.desc())
+        ).first()
+        return r.ai_review if r else None
 
 
 def list_sessions_by_doctor(doctor_id, patient_id=None):
-    """医生名下待审阅会话（通过患者 doctor_id 关联）"""
-    conn = sqlite3.connect(_db_path())
-    conn.row_factory = sqlite3.Row
-    if patient_id:
-        rows = conn.execute(
-            "SELECT * FROM followup_session WHERE patient_id=? ORDER BY created_at DESC",
-            (patient_id,),
-        ).fetchall()
-    else:
-        rows = conn.execute(
-            """SELECT s.* FROM followup_session s
-               JOIN patients p ON s.patient_id = p.patient_id
-               WHERE p.doctor_id = ?
-               ORDER BY s.created_at DESC""",
-            (doctor_id,),
-        ).fetchall()
-    conn.close()
-    return [_row_to_dict(r) for r in rows]
+    """医生名下待审阅会话（通过出院记录关联医生）。"""
+    try:
+        doctor_id = int(doctor_id)
+    except (TypeError, ValueError):
+        return []
+    with _session() as s:
+        pids = [pid for (pid,) in s.execute(
+            select(DischargeRecord.patient_id)
+            .where(DischargeRecord.doctor_id == doctor_id)
+        ).all()]
+    if patient_id is not None:
+        pids = [patient_id]
+    with _session() as s:
+        if pids:
+            rows = s.scalars(
+                select(FollowupSession)
+                .where(FollowupSession.patient_id.in_(pids))
+                .order_by(FollowupSession.created_at.desc())
+            ).all()
+        else:
+            rows = []
+    return [_session_to_dict(r) for r in rows]
 
 
 def get_latest_transcripts():
-    """返回每个患者最新一次随访会话的 transcript（dict: patient_id -> [{role, content}])。
-
-    供微信对话页（ChatPage）刷新/重启后还原历史对话。
-    """
-    conn = sqlite3.connect(_db_path())
-    conn.row_factory = sqlite3.Row
-    rows = conn.execute(
-        "SELECT patient_id, transcript_json, created_at FROM followup_session ORDER BY created_at DESC"
-    ).fetchall()
-    conn.close()
+    """返回每个患者最新一次随访会话的 transcript（dict: patient_id -> [{role, content}])。"""
+    with _session() as s:
+        rows = s.scalars(
+            select(FollowupSession)
+            .order_by(FollowupSession.patient_id, FollowupSession.created_at.desc())
+        ).all()
     result = {}
+    seen = set()
     for r in rows:
-        pid = r["patient_id"]
-        if pid in result:
+        if r.patient_id in seen:
             continue  # 已保留该患者最新一条
-        try:
-            t = json.loads(r["transcript_json"]) if r["transcript_json"] else []
-        except Exception:
-            t = []
-        result[pid] = t
+        seen.add(r.patient_id)
+        result[r.patient_id] = r.transcript_json or []
     return result
 
 
 # ======================================================================
-# followup_review
+# doctor_reviews（原 followup_review）
 # ======================================================================
 def create_review(session_id, patient_id, doctor_score=None,
-                  doctor_comment=None, track_status="pending_track",
-                  reviewer_id=None, audit_snapshot=None):
-    conn = sqlite3.connect(_db_path())
-    conn.row_factory = sqlite3.Row
-    review_id = f"REV-{uuid.uuid4().hex[:12].upper()}"
-    conn.execute(
-        """INSERT INTO followup_review
-           (review_id, session_id, patient_id, doctor_score, doctor_comment,
-            track_status, reviewer_id, reviewed_at, audit_snapshot)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (review_id, session_id, patient_id, doctor_score, doctor_comment,
-         track_status, reviewer_id, _now(),
-         json.dumps(audit_snapshot or {}, ensure_ascii=False)),
-    )
-    conn.commit()
-    conn.close()
-    return review_id
+                  doctor_comment=None, track_status="followup_done",
+                  reviewer_id=None, audit_snapshot=None, ai_review=None):
+    """写入一条医生审阅。
+
+    注意：session_id 可能传入字符串（如演示用 "no-reply-<pid>"），而 21 表设计中
+    session_id 为 INT（可空）。此处强转 int，失败则置 None（生成孤儿审阅，不影响主流程）。
+    """
+    sid = None
+    if session_id is not None:
+        try:
+            sid = int(session_id)
+        except (TypeError, ValueError):
+            sid = None
+    did = None
+    if reviewer_id is not None:
+        try:
+            did = int(reviewer_id)
+        except (TypeError, ValueError):
+            did = None
+    if did is None:
+        did = _resolve_doctor(patient_id)
+    if did is None:
+        did = 0
+    with _session() as s:
+        # ai_review 优先用显式参数；兼容旧调用（audit_snapshot 里塞 ai_review 的写法）
+        if ai_review is None and isinstance(audit_snapshot, dict):
+            ai_review = audit_snapshot.get("ai_review")
+        rv = DoctorReview(
+            session_id=sid,
+            patient_id=patient_id,
+            doctor_id=did,
+            score=doctor_score,
+            comment=doctor_comment,
+            track_status=track_status,
+            audit_snapshot=audit_snapshot or {},
+            ai_review=ai_review,
+        )
+        s.add(rv)
+        s.flush()
+        rid = rv.review_id
+        s.commit()
+        return rid
 
 
 def get_review_by_session(session_id):
     """返回该会话已有的审阅行（用于避免重复生成 AI 审阅）。"""
-    conn = sqlite3.connect(_db_path())
-    conn.row_factory = sqlite3.Row
-    row = conn.execute("SELECT * FROM followup_review WHERE session_id=?", (session_id,)).fetchone()
-    conn.close()
-    return _row_to_dict(row) if row else None
+    try:
+        session_id = int(session_id)
+    except (TypeError, ValueError):
+        return None
+    with _session() as s:
+        r = s.scalars(
+            select(DoctorReview)
+            .where(DoctorReview.session_id == session_id)
+            .order_by(DoctorReview.reviewed_at.desc())
+        ).first()
+        return _review_to_dict(r) if r else None
 
 
 def attach_ai_review(review_id, ai_review):
-    """把 D 号 Agent 的结构化审阅结果合并进 review 行的 audit_snapshot（兼容式更新，不改表结构）。"""
-    conn = sqlite3.connect(_db_path())
-    conn.row_factory = sqlite3.Row
-    row = conn.execute("SELECT audit_snapshot FROM followup_review WHERE review_id=?", (review_id,)).fetchone()
-    snap = {}
-    if row and row["audit_snapshot"]:
-        try:
-            snap = json.loads(row["audit_snapshot"])
-        except (json.JSONDecodeError, TypeError):
-            snap = {}
-    snap["ai_review"] = ai_review
-    conn.execute(
-        "UPDATE followup_review SET audit_snapshot=? WHERE review_id=?",
-        (json.dumps(snap, ensure_ascii=False), review_id),
-    )
-    conn.commit()
-    conn.close()
-    return True
+    """把 D 号 Agent 的结构化审阅结果写入 review 行的 ai_review 列。"""
+    try:
+        review_id = int(review_id)
+    except (TypeError, ValueError):
+        return False
+    with _session() as s:
+        r = s.get(DoctorReview, review_id)
+        if not r:
+            return False
+        r.ai_review = ai_review
+        s.commit()
+        return True
 
 
 def list_reviews(status=None, patient_id=None):
-    conn = sqlite3.connect(_db_path())
-    conn.row_factory = sqlite3.Row
-    sql = "SELECT * FROM followup_review WHERE 1=1"
-    params = []
-    if status:
-        sql += " AND track_status=?"
-        params.append(status)
-    if patient_id:
-        sql += " AND patient_id=?"
-        params.append(patient_id)
-    sql += " ORDER BY reviewed_at DESC"
-    rows = conn.execute(sql, params).fetchall()
-    conn.close()
-    return [_row_to_dict(r) for r in rows]
+    with _session() as s:
+        stmt = select(DoctorReview)
+        if status:
+            stmt = stmt.where(DoctorReview.track_status == status)
+        if patient_id is not None:
+            stmt = stmt.where(DoctorReview.patient_id == patient_id)
+        stmt = stmt.order_by(DoctorReview.reviewed_at.desc())
+        rows = s.scalars(stmt).all()
+    return [_review_to_dict(r) for r in rows]
 
 
 def get_latest_sessions(today=None):
-    """返回每个患者最新一次随访会话（按 created_at DESC 去重），并附带该会话的审阅信息（若有）。
-
-    供 Review 面板展示「最新内容」：重复随访后不再一直显示最早那一次。
-    today: 若传入（格式 YYYY-MM-DD），只返回当天创建的会话。
-    """
-    conn = sqlite3.connect(_db_path())
-    conn.row_factory = sqlite3.Row
-    sql = """SELECT s.*,
-                  r.review_id, r.doctor_score, r.doctor_comment,
-                  r.track_status, r.reviewed_at AS review_time
-           FROM followup_session s
-           LEFT JOIN followup_review r ON r.session_id = s.session_id
-           WHERE 1=1"""
-    params = []
-    if today:
-        sql += " AND date(s.created_at) = ?"
-        params.append(today)
-    sql += " ORDER BY s.created_at DESC"
-    rows = conn.execute(sql, params).fetchall()
-    conn.close()
-    result = {}
-    for r in rows:
-        d = _row_to_dict(r)
-        pid = d["patient_id"]
-        if pid in result:
-            continue  # 已保留该患者最新一条
-        d["ai_review"] = get_review_ai(d["session_id"])
-        result[pid] = d
-    return list(result.values())
+    """返回每个患者最新一次随访会话（按 created_at DESC 去重），并附带该会话的审阅信息。"""
+    with _session() as s:
+        sessions = s.scalars(
+            select(FollowupSession)
+            .order_by(FollowupSession.patient_id, FollowupSession.created_at.desc())
+        ).all()
+        reviews = s.scalars(select(DoctorReview)).all()
+    latest = {}
+    for sess in sessions:
+        if sess.patient_id in latest:
+            continue
+        latest[sess.patient_id] = sess
+    rev_by_session = {}
+    for r in reviews:
+        if r.session_id is None:
+            continue
+        if r.session_id not in rev_by_session:
+            rev_by_session[r.session_id] = r
+    result = []
+    for pid, sess in latest.items():
+        if today:
+            sd = sess.created_at.strftime("%Y-%m-%d") if sess.created_at else None
+            if sd != today:
+                continue
+        d = _session_to_dict(sess)
+        rev = rev_by_session.get(sess.session_id)
+        if rev:
+            d["review_id"] = rev.review_id
+            d["doctor_score"] = rev.score
+            d["doctor_comment"] = rev.comment
+            d["track_status"] = rev.track_status
+            d["review_time"] = rev.reviewed_at.isoformat() if rev.reviewed_at else None
+            d["ai_review"] = rev.ai_review
+        else:
+            d["review_id"] = None
+            d["doctor_score"] = None
+            d["doctor_comment"] = None
+            d["track_status"] = None
+            d["review_time"] = None
+            d["ai_review"] = None
+        result.append(d)
+    return result
 
 
 def review_stats(today=None):
-    """统计基于每个患者最新一次随访会话的审阅，避免被重跑覆盖的旧审阅仍被计入。
-
-    与 /api/reviews/latest（列表只展示每人最新会话）口径保持一致：
-    列表里看不到的（旧会话上的）审阅，统计也不再计数。
-    today: 若传入（格式 YYYY-MM-DD），只统计当天创建的会话。
-    """
-    conn = sqlite3.connect(_db_path())
-    conn.row_factory = sqlite3.Row
-    # 1. 取每个患者最新一次会话的 session_id
-    sql = "SELECT session_id, patient_id FROM followup_session"
-    params = []
-    if today:
-        sql += " WHERE date(created_at) = ?"
-        params.append(today)
-    sql += " ORDER BY created_at DESC"
-    latest_rows = conn.execute(sql, params).fetchall()
-    latest_ids = []
+    """统计基于每个患者最新一次随访会话的审阅。"""
+    with _session() as s:
+        sessions = s.scalars(select(FollowupSession)).all()
+        reviews = s.scalars(select(DoctorReview)).all()
+    latest_sids = set()
     seen = set()
-    for r in latest_rows:
-        pid = r["patient_id"]
-        if pid in seen:
+    for sess in sessions:
+        if sess.patient_id in seen:
             continue
-        seen.add(pid)
-        latest_ids.append(r["session_id"])
-
-    if latest_ids:
-        placeholders = ",".join("?" for _ in latest_ids)
-        total = conn.execute(
-            f"SELECT COUNT(*) FROM followup_review WHERE session_id IN ({placeholders})",
-            latest_ids).fetchone()[0]
-        pending = conn.execute(
-            f"SELECT COUNT(*) FROM followup_review WHERE session_id IN ({placeholders}) AND track_status='pending_track'",
-            latest_ids).fetchone()[0]
-        tracking = conn.execute(
-            f"SELECT COUNT(*) FROM followup_review WHERE session_id IN ({placeholders}) AND track_status='tracking'",
-            latest_ids).fetchone()[0]
-        resolved = conn.execute(
-            f"SELECT COUNT(*) FROM followup_review WHERE session_id IN ({placeholders}) AND track_status='resolved'",
-            latest_ids).fetchone()[0]
-        need_revisit = conn.execute(
-            f"SELECT COUNT(*) FROM followup_review WHERE session_id IN ({placeholders}) AND track_status='need_revisit'",
-            latest_ids).fetchone()[0]
-        avg_row = conn.execute(
-            f"SELECT AVG(doctor_score) FROM followup_review WHERE session_id IN ({placeholders}) AND doctor_score IS NOT NULL",
-            latest_ids).fetchone()[0]
-    else:
-        total = pending = tracking = resolved = need_revisit = 0
-        avg_row = None
-    conn.close()
+        seen.add(sess.patient_id)
+        latest_sids.add(sess.session_id)
+    latest_reviews = [r for r in reviews if r.session_id in latest_sids]
+    if today:
+        latest_reviews = [
+            r for r in latest_reviews
+            if r.reviewed_at and r.reviewed_at.strftime("%Y-%m-%d") == today
+        ]
+    total = len(latest_reviews)
+    pending = sum(1 for r in latest_reviews if r.track_status == "pending_track")
+    tracking = sum(1 for r in latest_reviews if r.track_status == "tracking")
+    resolved = sum(1 for r in latest_reviews if r.track_status == "resolved")
+    need_revisit = sum(1 for r in latest_reviews if r.track_status == "need_revisit")
+    scores = [r.score for r in latest_reviews if r.score is not None]
+    avg_score = round(sum(scores) / len(scores), 2) if scores else None
     return {
         "total": total,
         "pending_track": pending,
         "tracking": tracking,
         "resolved": resolved,
         "need_revisit": need_revisit,
-        "avg_score": round(avg_row, 2) if avg_row else None,
+        "avg_score": avg_score,
     }
 
 
-# 复用既有的 DB 路径（与 data/database.py 一致）
-def _db_path():
-    from data.database import DB_PATH
-    return DB_PATH
+__all__ = [
+    "create_plan", "get_plan", "get_latest_plan", "list_plans_by_doctor",
+    "list_all_latest_plans", "approve_plan", "modify_plan", "batch_approve_plans",
+    "create_session", "get_today_session", "update_session", "get_session",
+    "get_review_ai", "list_sessions_by_doctor", "get_latest_transcripts",
+    "create_review", "get_review_by_session", "attach_ai_review",
+    "list_reviews", "get_latest_sessions", "review_stats",
+]

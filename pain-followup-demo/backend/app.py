@@ -53,7 +53,7 @@ bootstrap()
 log.info("启动引导完成 (%.1fs)", _time.time() - _t0)
 
 # ======== 路由 / 事件注册 ========
-# 守卫：若 langgraph / chromadb 等重依赖未安装，旧 Demo 仍能正常运行，
+# 守卫：若 langgraph 等重依赖未安装，旧 Demo 仍能正常运行，
 # 仅 RAG / 多 Agent 相关接口不可用。
 try:
     from knowledge.api_routes import knowledge_router
@@ -84,7 +84,7 @@ if __name__ == "__main__":
 
     log.info("慢性疼痛随访智能体 - 后端服务启动")
     log.info("FastAPI + WebSocket: http://localhost:%d", config.API_PORT)
-    log.info("数据库: %s", config.DB_PATH)
+    log.info("数据库: MySQL @ %s:%s/%s", config.DB_HOST, config.DB_PORT, config.DB_NAME)
     log.info("LLM: %s  Key: %s", config.LLM_MODEL,
              "已配置" if config.LLM_API_KEY else "未配置（降级）")
     log.info("启动总耗时 %.1fs", _time.time() - _t0)

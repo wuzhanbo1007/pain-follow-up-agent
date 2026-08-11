@@ -2,11 +2,11 @@
 RAG 批量入库流程
 
 用法（在 backend 目录下）：
-    python -m knowledge.ingest            # 解析 raw/ → 切分 → embedding → 写入 Chroma
+    python -m knowledge.ingest            # 解析 raw/ → 切分 → embedding → 写入 ES
     python -m knowledge.ingest --status  # 仅打印当前向量库状态
 
 依赖：
-    pip install chromadb pypdf sentence-transformers torch
+    pip install elasticsearch pypdf sentence-transformers torch
 （bge-m3 首次运行会自动从 HuggingFace 下载权重）
 """
 import argparse
@@ -35,7 +35,7 @@ def main():
         try:
             from .retriever import _get_store
             store = _get_store()
-            print(f"[RAG] 集合={config.CHROMA_COLLECTION} 路径={config.CHROMA_DIR} 文档数={store.count}")
+            print(f"[RAG] 索引={config.ES_INDEX} 路径={config.ES_HOST} 文档数={store.count}")
         except Exception as e:
             print(f"[RAG] 状态获取失败：{e}")
         return
@@ -43,11 +43,11 @@ def main():
     print(f"[RAG] 开始入库：raw={args.raw or config.RAW_DIR}")
     try:
         n = rebuild_knowledge(args.raw, args.target, args.overlap)
-        print(f"[RAG] ✅ 入库完成，共 {n} 个 chunk")
-        print(f"      集合={config.CHROMA_COLLECTION} 持久化于 {config.CHROMA_DIR}")
+        print(f"[RAG] OK: 入库完成，共 {n} 个 chunk")
+        print(f"      索引={config.ES_INDEX} 写入 {config.ES_HOST}")
     except Exception as e:
-        print(f"[RAG] ❌ 入库失败：{e}")
-        print("      请确认已安装 chromadb / pypdf，且 bge-m3 可下载（或改用 OpenAI 兼容 embedding）。")
+        print(f"[RAG] FAIL: 入库失败：{e}")
+        print("      请确认已安装 elasticsearch / pypdf，且 bge-m3 可下载（或改用 OpenAI 兼容 embedding）。")
         sys.exit(1)
 
 

@@ -31,7 +31,7 @@
       <label class="text-xs text-gray-500 flex items-center gap-1">
         医生ID
         <input
-          v-model="doctorId" placeholder="DOC-001"
+          v-model="doctorId" placeholder="医生ID（数字，如 1）"
           class="lan-compact-control text-sm border border-gray-200 rounded-lg px-2 py-1 outline-none focus:border-blue-400"
         />
       </label>
@@ -91,7 +91,6 @@
             </div>
           </div>
           <div class="text-xs text-gray-500 mt-0.5 truncate">{{ p.diagnosis }}</div>
-          <div class="text-xs text-gray-400 mt-0.5 font-mono">{{ p.patient_id }}</div>
         </div>
       </div>
 
@@ -110,9 +109,6 @@
             <div class="flex items-start justify-between mb-3">
               <div>
                 <div class="text-lg font-bold text-gray-800">{{ info.name }}</div>
-                <div class="text-sm text-gray-500 mt-0.5">
-                  <span class="font-mono">{{ info.patient_id }}</span>
-                </div>
               </div>
               <div class="flex items-center gap-1">
                 <span
@@ -239,7 +235,7 @@ const props = defineProps({
 // 以 patient_id 为键的计划草稿表（每位患者最多一条，天然去重）
 const plans = ref({})
 const selectedPatientId = ref('')
-const doctorId = ref('DOC-001')
+const doctorId = ref('1')
 const selectedDetail = ref(null)
 const editing = ref(false)
 const editForm = ref({})  // 字段编辑表单，非 JSON 文本

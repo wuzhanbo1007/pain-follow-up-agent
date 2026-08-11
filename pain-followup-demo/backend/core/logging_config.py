@@ -8,7 +8,7 @@ import threading
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
-_NOISY_LOGGERS = ("httpx", "httpcore", "openai", "urllib3", "chromadb", "sqlalchemy", "uvicorn")
+_NOISY_LOGGERS = ("httpx", "httpcore", "openai", "urllib3", "sqlalchemy", "uvicorn")
 _CONFIGURED = False
 _CONFIG_LOCK = threading.RLock()
 

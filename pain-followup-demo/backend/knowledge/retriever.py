@@ -10,7 +10,6 @@ from typing import List, Optional
 
 from . import config
 from .embeddings import get_embedding_provider
-from .store import ChromaStore
 
 
 @dataclass
@@ -43,19 +42,20 @@ _STORE = None
 _STORE_LOCK = threading.Lock()
 
 
-def _get_store() -> ChromaStore:
-    """获取（懒加载）全局 Chroma 检索单例。
+def _get_store():
+    """获取（懒加载）全局检索单例（Elasticsearch 后端）。
 
-    线程安全：用锁保证「冷启动」时只有一个线程去创建 PersistentClient，
-    避免多个并发请求同时建库触发 Chroma 底层 SQLite 竞态（count 被静默吞成 0
-    → 检索为空 → 计划占位）。见 store.count 的 except 吞异常逻辑。
+    线程安全：用锁保证「冷启动」时只有一个线程去创建 store，
+    避免多个并发请求同时初始化触发底层竞态（count 被静默吞成 0
+    → 检索为空 → 计划占位）。
     """
     global _STORE
     if _STORE is None:
         with _STORE_LOCK:
             if _STORE is None:
                 provider = get_embedding_provider()
-                _STORE = ChromaStore(provider)
+                from .es_store import EsStore
+                _STORE = EsStore(provider)
     return _STORE
 
 
@@ -64,25 +64,33 @@ def warm_store() -> None:
     try:
         store = _get_store()
         n = store.warm()
-        print(f"[retriever] 向量库预热完成，集合「{store.collection_name}」共 {n} 条")
+        # 兼容 ChromaStore（collection_name）与 EsStore（index）
+        name = getattr(store, "collection_name", None) or getattr(store, "index", "?")
+        print(f"[retriever] 向量库预热完成，集合「{name}」共 {n} 条")
     except Exception as e:
         # 预热失败不应阻塞服务启动；真正出错会在首个检索请求时暴露
         print(f"[retriever] 预热向量库失败（首个检索请求时才会真正报错）: {e}")
 
 
 def retrieve_guidelines(
-    query: str,
+    query: str = None,
     diagnosis: str = None,
     k: int = None,
     category: str = None,
+    discharge_summary: str = None,
+    symptoms: str = None,
 ) -> List[CitedChunk]:
     """
-    检索与 query（患者诊断/病情）相关的指南与共识条款。
+    检索与患者相关的指南与共识条款。
 
-    :param query: 检索问句（通常含诊断+病情）
+    :param query: 兼容参数。若不传 discharge_summary/symptoms，则 query 同时用于语义+关键词。
     :param diagnosis: 患者诊断，用于日志/后续精排（当前不硬过滤）
     :param k: top-k，默认 config.RETRIEVE_TOP_K
     :param category: 仅检索某类别（guidelines/consensus/pathways/internal）
+    :param discharge_summary: 出院小结（做语义匹配 kNN，推荐传完整内容）。
+        与 symptoms 同时提供时，两者合并为同一语义查询（kNN + reranker 共用），
+        BM25 关键词通道仍只用 symptoms。
+    :param symptoms: 症状/诊断关键词（做关键词匹配 BM25）
     :return: CitedChunk 列表，按相似度降序
     """
     k = k or config.RETRIEVE_TOP_K
@@ -90,7 +98,15 @@ def retrieve_guidelines(
     if store.count == 0:
         # 向量库为空：提示但尚未报错，由调用方降级处理
         return []
-    hits = store.query(query, k=k, category=category)
+    # 合并语义+关键词：kNN 与 reranker 查询同时带患者上下文 + 具体要点
+    # （RAGAS A/B 验证：Recall 42.5→57.5%, Precision 50.9→65.6%）
+    sem = discharge_summary or query
+    kw = symptoms or query
+    if discharge_summary and symptoms and symptoms not in sem:
+        sem = f"{sem} {kw}"
+    hits = store.query_hybrid(query, k=k, category=category,
+                              semantic_text=sem,
+                              keyword_text=kw)
     out: List[CitedChunk] = []
     for h in hits:
         m = h.get("metadata", {})
@@ -116,14 +132,14 @@ def _to_int(v):
 
 
 def rebuild_knowledge(raw_dir=None, target=None, overlap=None) -> int:
-    """重跑 ingestion（解析→切分→embedding→入库），返回入库 chunk 数"""
+    """重跑 ingestion（解析→切分→embedding→写入 ES），返回入库 chunk 数"""
     from .splitter import load_and_split
     from .embeddings import get_embedding_provider
-    from .store import ChromaStore
+    from .es_store import EsStore
 
     chunks = load_and_split(raw_dir, target, overlap)
     provider = get_embedding_provider()
-    store = ChromaStore(provider)
+    store = EsStore(provider)
     n = store.build(chunks)
     global _STORE
     _STORE = store

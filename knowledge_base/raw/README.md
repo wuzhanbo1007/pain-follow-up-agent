@@ -1,7 +1,7 @@
 # PainSmart6.0 随访知识库 · 语料清单 (raw)
 
 > 本目录存放用于「医学知识检索 RAG」的原始语料。建议先在此 `raw/` 存放原始文件，
-> 由入库脚本（P0）解析后写入 `../processed/` 与向量库（Chroma）。
+> 由入库脚本（P0）解析后写入 `../processed/` 与向量库（Elasticsearch）。
 
 ## 目录结构
 ```
@@ -104,6 +104,30 @@ knowledge_base/
 
 > 注：另尝试下载《难治性癌痛专家共识(2017版)》（中国肿瘤临床 2017,44(16):787-793），但旧刊直链返回空字节、不可直取，未计入。
 
+### 9.1.2 本轮补充下载（3 份，`downloaded_guidelines/`，2026-07-31，已落盘）
+> 目标：补强此前仅有合成参考文本、缺真实 PDF 的疼痛类型（骨关节炎、神经调控、神经病理性疼痛药物治疗）。
+13. 骨关节炎临床药物治疗专家共识.pdf（huasan.net 开放直链，约 1.28MB；骨科/风湿领域 OA 药物治疗共识，覆盖 NSAIDs/软骨保护剂/玻璃酸钠等）
+14. 脊髓电刺激管理慢性疼痛中美专家共识(2024).pdf（协和医学杂志 xhyxzz.pumch.cn 开放直链，约 1.33MB；适应证覆盖 CRPS、脑卒中后疼痛、痛性糖尿病神经病变、幻肢痛、PHN 等神经调控场景）
+15. 神经病理性疼痛评估与管理中国指南(2024版).pdf（ddzxhospital.com 开放直链，约 740KB；含 NP 一线药物剂量滴定：加巴喷丁/普瑞巴林/卡马西平/阿米替林等）
+
+> 注：另尝试下载《偏头痛中西医结合诊疗指南》（cacm.org.cn）返回 404（文件已迁移）；《中国紧张型头痛诊断与治疗指南》《中国偏头痛诊断与治疗指南》在 yiigle/medlive 为登录墙，未强行绕过。建议用机构账号从 `guide.medlive.cn/guideline/28972`（偏头痛）、`28974`（紧张型头痛）或 `rs.yiigle.com` 下载后放入 `downloaded_guidelines/`。
+
+### 9.1.3 本轮补充下载（11 份英文开放全文，`downloaded_guidelines/`，2026-07-31）
+> 来源：PubMed Central（NCBI efetch 全文 XML → 解析正文 → fpdf2 生成 PDF）。因 WebSearch/WebFetch 工具临时不可用、NCBI PDF 直链有 bot 防护、中文源 PDF 多为 UUID 动态路径，改用 PMC 英文开放全文作为真实文献补充，覆盖此前仅合成文本的疼痛类型缺口。
+> 命名：`_<类型>_<英文关键词>.pdf`；正文为真实已发表文章的英文全文（非合成）。
+16. 类风湿关节炎疼痛_rheumatoid_arthritis.pdf（rheumatoid arthritis pain 相关综述/研究全文）
+17. 强直性脊柱炎疼痛_ankylosing_spondylitis.pdf（ankylosing spondylitis chronic pain 相关）
+18. 三叉神经痛_trigeminal_neuralgia.pdf（trigeminal neuralgia 射频/管理相关全文）
+19. 痛性糖尿病周围神经病变_painful_DPN.pdf（diabetic peripheral neuropathic pain 相关）
+20. 腰椎间盘突出症_lumbar_radicular.pdf（lumbar disc herniation radicular pain 内镜/管理相关）
+21. 慢性偏头痛_chronic_migraine.pdf（chronic migraine 预防/机制相关）
+22. 子宫内膜异位症疼痛_endometriosis.pdf（endometriosis pain 相关）
+23. 膀胱疼痛综合征_interstitial_cystitis.pdf（interstitial cystitis / painful bladder syndrome）
+24. 骨质疏松性骨折痛_osteoporotic_fracture.pdf（vertebral fracture / bone mass 相关）
+25. 紧张型头痛_tension_headache.pdf（tension type headache 相关）
+26. 幻肢痛_phantom_limb.pdf（phantom limb / postamputation pain 相关）
+> 注：化疗后周围神经病变（CIPN）经多次放宽检索词仍未命中标题含 neuropathy/pain 的 PMC 全文，暂缺，建议手动用机构账号补充。
+
 ### 9.2 原有真实 PDF（5 份，沿用）
 - `guidelines/中国神经病理性疼痛诊疗指南2024版.pdf`
 - `consensus/带状疱疹后神经痛中西医结合诊疗专家共识2026版.pdf`
@@ -116,7 +140,7 @@ knowledge_base/
 
 ### 9.4 现实说明
 疼痛领域权威指南/共识大多在登录墙/付费墙后，开放直链真实 PDF 上限约十余份，无法达到 100 份真实 PDF。
-当前真实 PDF=17 份（新增 2 份 cjco 开放共识）+ 合成参考 99 份 + 合成共识 30 份 = 146 份语料；如需更多真实 PDF，请用自己的机构账号运行 `download_public_pdfs.py` / `download_more_pdfs.py` 扩充 URL 清单，或手动放入 `downloaded_guidelines/`。
+当前真实 PDF≈31 份（5 原有 + 12 guidelines/consensus 沿用 + 2 cjco + 3 中文开放 + 11 英文开放全文，均位于 downloaded_guidelines/）+ 合成参考 99 份 + 合成共识 30 份 ≈ 160 份语料；如需更多真实 PDF，请用自己的机构账号运行 `download_public_pdfs.py` / `download_more_pdfs.py` 扩充 URL 清单，或手动放入 `downloaded_guidelines/`。
 
 ## 🤖 合成参考文本（AI 生成，非官方发布）
 > 以下 TXT 由 AI 依据公开疼痛诊疗通用原则整理生成，用于补足「待获取」共识/参考缺口，

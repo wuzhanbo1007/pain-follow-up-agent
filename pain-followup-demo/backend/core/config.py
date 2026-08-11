@@ -25,8 +25,12 @@ API_HOST = os.getenv("API_HOST", "0.0.0.0")
 API_PORT = int(os.getenv("API_PORT", "5000"))
 API_DEBUG = os.getenv("API_DEBUG", "true").lower() == "true"
 
-# ===== 数据库配置 =====
-DB_PATH = os.getenv("DB_PATH", str(Path(__file__).parent.parent / "data" / "history.db"))
+# ===== 数据库配置（MySQL，连接串与参数见 data/db_config.py / backend/.env）=====
+from data.db_config import (
+    DATABASE_URL, DB_HOST, DB_PORT, DB_USER, DB_NAME, DB_PASSWORD,
+)
+# 兼容别名：原 SQLite 数据库路径已切换为 MySQL 连接串（SQLite 已彻底移除）
+DB_PATH = DATABASE_URL
 
 # ===== Demo 日期固化 =====
 # 设置后，随访判定、"今天"等逻辑均以此日期为准，保证跨天演示数据一致。

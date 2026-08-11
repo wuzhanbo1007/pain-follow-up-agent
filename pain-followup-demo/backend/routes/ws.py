@@ -23,7 +23,7 @@ def register_ws_events(sio):
             "status": "ok",
             "total_patients": len(runtime.PATIENTS),
             "state": runtime.followup_service.state,
-            "db_path": config.DB_PATH,
+            "db_type": "mysql", "db_name": config.DB_NAME,
         }, to=sid)
 
     @sio.on("chat:request_sync")

@@ -28,6 +28,7 @@ from db.followup_db import create_plan
 from prompts.plan_generation import build_prompt as build_plan_prompt
 from prompts.plan_system import build_system_prompt as build_plan_system_prompt
 from core import config
+from knowledge import config as kb_config
 from llm.client import achat_completion, is_llm_available
 
 
@@ -51,9 +52,25 @@ def _patient_context(patient_id: str, diagnosis: str = None, discharge_summary: 
 
 
 def _retrieve(state: AgentState) -> dict:
-    """retrieve_guidelines（B 号 Agent）：按诊断+病情检索共识条款"""
-    query = f"{state.get('diagnosis', '')} 随访 复查 用药 疼痛管理"
-    ev = retrieve_guidelines(query, diagnosis=state.get("diagnosis"))
+    """retrieve_guidelines（B 号 Agent）：检索共识条款。
+
+    语义/关键词分离（ES 后端）：
+      - 语义匹配（kNN）← 完整出院小结（真实诊疗叙述，召回最相关的指南）
+      - 关键词匹配（BM25）← 诊断（疾病特异词，精准命中含该诊断的条款）
+
+    注意：不要往症状关键词里拼"随访 复查 用药 疼痛管理"这类通用词——
+    它们会让任何提到"随访"的文档都命中，挤掉疾病特异的 PDF 指南并引入噪音。
+    """
+    dis_summary = state.get("discharge_summary", "") or ""
+    diag = state.get("diagnosis", "") or ""
+    # 关键词：只用诊断（疾病特异词）；无诊断时兜底"疼痛"
+    symptoms = diag.strip() or "疼痛"
+    ev = retrieve_guidelines(
+        query=symptoms,                     # 兼容：无 dis_summary 时退回关键词
+        diagnosis=diag,
+        discharge_summary=dis_summary,      # 语义匹配用完整出院小结
+        symptoms=symptoms,                  # 关键词匹配用诊断
+    )
     return {"retrieved_evidence": ev}
 
 
@@ -181,14 +198,14 @@ def _evidence_fallback_plan(evidence) -> FollowUpPlan:
         duration_days=-1,
         pain_type="",
         recheck_items=[],
-        medication_adjustment="LLM 返回内容解析失败，请医生依据下方共识人工制定",
+        medication_adjustment="需医生补充完善（可参考下方共识）",
         warning_threshold="NRS≥7 建议干预（依据检索共识）",
-        health_education=["请医生依据检索到的共识人工完善"],
+        health_education=["需医生补充完善（可参考检索共识）"],
         lifestyle=[],
         evidence_basis=eb,
         status="degraded",
         degraded_fields=["frequency", "medication_adjustment", "health_education"],
-        note="LLM 返回内容解析失败，已回退为证据摘要，需医生人工完善",
+        note="已回退为证据摘要，需医生补充完善",
     )
 
 
@@ -327,7 +344,7 @@ def _finalize_citations_impl(plan: FollowUpPlan, evidence=None) -> FollowUpPlan:
             elif not c.clause and _eg(src, "section"):
                 c.clause = _eg(src, "section")
             if not c.excerpt:
-                c.excerpt = _eg(src, "text")[:200]
+                c.excerpt = _eg(src, "text")[: kb_config.PROMPT_EXCERPT_CHARS]
 
     # ---- ② 收集所有被引用的编号（正文 + evidence_basis）----
     text_blob = " ".join(
@@ -408,12 +425,72 @@ def _finalize_citations_impl(plan: FollowUpPlan, evidence=None) -> FollowUpPlan:
     return plan
 
 
+# 兜底回填：字段 → 内容关键词。按字段类型匹配正确证据，避免"复查项目填成生活建议"等错位。
+_FIELD_KEYWORDS = {
+    "recheck_items": ["复查", "随访", "评估", "监测", "筛查", "复诊", "检查", "检测", "评分"],
+    "medication_adjustment": ["药物", "用药", "剂量", "服药", "口服", "服用", "滴定", "减量",
+                              "加巴喷丁", "普瑞巴林", "度洛西汀", "阿米替林", "利多卡因", "阿片", "NSAID", "对乙酰氨基酚"],
+    "warning_threshold": ["阈值", "预警", "NRS", "VAS", "及时就医", "立即联系", "转诊", "红旗", "危险信号", "急诊", "就医"],
+    "health_education": ["健康", "教育", "告知", "宣教", "注意事项", "应知"],
+    "lifestyle": ["生活方式", "运动", "锻炼", "饮食", "作息", "睡眠", "活动", "减重", "康复", "休息"],
+}
+
+
+def _pick_basis_for_field(basis: list, field: str, used: set) -> "CitationItem":
+    """从 evidence_basis 中挑出与字段类型最匹配的证据（关键词打分，且避免重复用同一条）。
+
+    无任何匹配时退回"未用过"的首条，保证不空。
+    """
+    best, best_score = None, 0
+    for b in basis:
+        if id(b) in used:
+            continue
+        text = (b.excerpt or "") + " " + (b.guide or "")
+        sc = sum(1 for kw in _FIELD_KEYWORDS.get(field, []) if kw in text)
+        if sc > best_score:
+            best, best_score = b, sc
+    if best is None:
+        for b in basis:
+            if id(b) not in used:
+                return b
+    return best or (basis[0] if basis else None)
+
+
+def _pick_evidence_for_field(evidence, field, used):
+    """降级路径：按字段类型从检索证据（CitedChunk 列表）中挑最匹配的一条，避免错位回填。"""
+    best, best_score = None, 0
+    for e in evidence:
+        if id(e) in used:
+            continue
+        text = (getattr(e, "text", "") or "") + " " + (getattr(e, "title", "") or "")
+        sc = sum(1 for kw in _FIELD_KEYWORDS.get(field, []) if kw in text)
+        if sc > best_score:
+            best, best_score = e, sc
+    if best is None:
+        for e in evidence:
+            if id(e) not in used:
+                return e
+    return best or (evidence[0] if evidence else None)
+
+
+def _degraded_content(evidence, field, used, note="需医生补充完善"):
+    """降级路径：按字段类型取一条最匹配证据，拼成「参考《标题》：内容（note）」；无匹配返回 None。"""
+    src = _pick_evidence_for_field(evidence, field, used)
+    if src is None:
+        return None
+    used.add(id(src))
+    title = getattr(src, "title", "") or "相关共识"
+    text = (getattr(src, "text", "") or "").strip()[:80]
+    return f"参考《{title}》：{text}（{note}）"
+
+
 def _backfill_empty_fields(plan: FollowUpPlan, basis: list) -> None:
     """把空的"建议类"字段用检索共识原文回填并标注 [n]。
 
     解决部分模型"只给频次+周期、漏填复查/用药/预警/健康教育/生活方式"的问题：
     这些字段一旦有内容，引用就挂得上，呼应"证据溯源与正文一一对应"的诉求。
     仅摘取检索到的原文（excerpt），不做任何虚构，符合"禁止编造"约束。
+    按字段类型（复查/用药/预警/教育/生活方式）匹配对应证据，避免错位回填。
     """
     if not basis:
         return
@@ -424,13 +501,17 @@ def _backfill_empty_fields(plan: FollowUpPlan, basis: list) -> None:
         ("health_education", "list"),
         ("lifestyle", "list"),
     ]
-    for i, (field, kind) in enumerate(specs):
+    used: set = set()
+    for field, kind in specs:
         val = getattr(plan, field, None)
         is_empty = (kind == "list" and not val) or (kind == "text" and not str(val or "").strip())
         if not is_empty:
             continue
-        src = basis[i % len(basis)]
-        ref = src.ref or f"[{i % len(basis) + 1}]"
+        src = _pick_basis_for_field(basis, field, used)
+        if src is None:
+            continue
+        used.add(id(src))
+        ref = src.ref or "[1]"
         guide = src.guide or "相关共识"
         clause = src.clause or ""
         excerpt = (src.excerpt or "").strip()
@@ -654,14 +735,14 @@ async def _draft(state: AgentState) -> dict:
             "duration_days": -1,
             "pain_type": diagnosis,
             "recheck_items": [],
-            "medication_adjustment": "未检索到相关共识，建议医生人工制定用药调整",
-            "warning_threshold": "NRS≥7 或睡眠持续差，建议医生人工制定",
-            "health_education": ["未检索到相关共识，建议医生人工制定"],
+            "medication_adjustment": "未检索到相关共识，需医生补充完善用药调整",
+            "warning_threshold": "NRS≥7 或睡眠持续差，需医生补充完善",
+            "health_education": ["未检索到相关共识，需医生补充完善"],
             "lifestyle": [],
             "evidence_basis": [],
             "status": "degraded",
             "degraded_fields": ["frequency", "medication_adjustment", "warning_threshold", "health_education", "evidence_basis"],
-            "note": "未检索到相关指南/共识条款，计划为占位，需医生人工完善",
+            "note": "未检索到相关指南/共识条款，计划为占位，需医生补充完善",
         }
         plan = _ensure_all_fields_filled(plan, evidence, diagnosis, prescribed_freq)
         return {"plan_json": plan, "citations": []}
@@ -680,18 +761,21 @@ async def _draft(state: AgentState) -> dict:
             citations = validated.evidence_basis
             return {"plan_json": plan, "citations": [c.model_dump() for c in citations]}
         except Exception as exc:
-            # LLM 失败降级：保留证据片段，提示医生
+            # LLM 失败降级：按字段类型匹配证据片段，再提示医生人工完善
             def _ev(e, key):
                 return getattr(e, key, "") or ""
+            _used = set()
+            _recheck = _degraded_content(evidence, "recheck_items", _used)
+            _lifestyle = _degraded_content(evidence, "lifestyle", _used)
             plan = {
                 "frequency": "待定",
                 "duration_days": -1,
                 "pain_type": diagnosis,
-                "recheck_items": [f"{_ev(e,'title')}：{_ev(e,'text')[:80]}" for e in evidence[:3]],
-                "medication_adjustment": "LLM 生成失败，请医生依据下方共识人工制定",
+                "recheck_items": [_recheck] if _recheck else [],
+                "medication_adjustment": "需医生补充完善（可参考下方共识）",
                 "warning_threshold": "NRS≥7 建议干预（依据检索共识）",
-                "health_education": ["请医生依据检索到的共识人工完善"],
-                "lifestyle": [],
+                "health_education": ["需医生补充完善（可参考检索共识）"],
+                "lifestyle": [_lifestyle] if _lifestyle else [],
                 "evidence_basis": [
                     {"ref": f"[{i+1}]", "guide": _ev(e, "title"), "year": _ev(e, "year"),
                      "page": _ev(e, "page"), "clause": (f"第{_ev(e,'clause_no')}条" if _ev(e,'clause_no') else _ev(e, "section")),
@@ -700,23 +784,26 @@ async def _draft(state: AgentState) -> dict:
                 ],
                 "status": "degraded",
                 "degraded_fields": ["frequency", "medication_adjustment", "health_education"],
-                "note": f"LLM 生成失败（{type(exc).__name__}），已回退为证据摘要，需医生人工完善",
+                "note": "已回退为证据摘要，需医生补充完善",
             }
             plan = _ensure_all_fields_filled(plan, evidence, diagnosis, prescribed_freq)
             return {"plan_json": plan, "citations": plan["evidence_basis"]}
 
-    # 完全无 LLM 配置 → 模板降级
+    # 完全无 LLM 配置 → 模板降级（按字段类型匹配证据片段）
     def _ev(e, key):
         return getattr(e, key, "") or ""
+    _used = set()
+    _recheck = _degraded_content(evidence, "recheck_items", _used)
+    _lifestyle = _degraded_content(evidence, "lifestyle", _used)
     plan = {
         "frequency": "每周三、周五",
         "duration_days": -1,
         "pain_type": diagnosis,
-        "recheck_items": [_ev(e, "title") for e in evidence[:3]],
-        "medication_adjustment": "请医生依据检索共识人工制定",
+        "recheck_items": [_recheck] if _recheck else [],
+        "medication_adjustment": "需医生补充完善（可参考检索共识）",
         "warning_threshold": "NRS≥7 建议干预",
-        "health_education": ["请医生依据检索共识人工完善"],
-        "lifestyle": [],
+        "health_education": ["需医生补充完善（可参考检索共识）"],
+        "lifestyle": [_lifestyle] if _lifestyle else [],
         "evidence_basis": [
             {"ref": f"[{i+1}]", "guide": _ev(e, "title"), "year": _ev(e, "year"),
              "page": _ev(e, "page"), "clause": (f"第{_ev(e,'clause_no')}条" if _ev(e,'clause_no') else _ev(e, "section")),
@@ -725,7 +812,7 @@ async def _draft(state: AgentState) -> dict:
         ],
         "status": "degraded",
         "degraded_fields": ["frequency", "medication_adjustment", "health_education"],
-        "note": "LLM 未配置，已回退为证据摘要，需医生人工完善",
+        "note": "已回退为证据摘要，需医生补充完善",
     }
     plan = _ensure_all_fields_filled(plan, evidence, diagnosis, prescribed_freq)
     return {"plan_json": plan, "citations": plan["evidence_basis"]}

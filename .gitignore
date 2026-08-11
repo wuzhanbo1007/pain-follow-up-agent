@@ -8,6 +8,7 @@ __pycache__/
 # 数据库文件
 *.db
 *.sqlite
+*.sqlite3
 
 # 环境配置
 .env
@@ -30,3 +31,7 @@ Thumbs.db
 *.pyo
 venv/
 .venv/
+
+# RAG 向量库产物（当前后端为 Elasticsearch；Chroma 旧版遗留勿提交）
+knowledge_base/vector_store/
+pain-followup-demo/backend/knowledge/eval_chroma/

@@ -1,7 +1,7 @@
 """依赖组装容器。
 
 app.py 只负责协议入口，具体对象创建集中在这里，避免入口文件继续膨胀。
-V9.1: ToolDispatcher 已移除，工具改为 function-calling 模式（engine/tool_definitions.py）。
+工具采用 function-calling 模式（engine/tool_definitions.py）。
 """
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ def build_container(db: PatientDB, patients: list[dict[str, Any]], replies: dict
     reply_parser = ReplyParser()
     message_generator = MessageGenerator()
 
-    # V9.1: 注册 function-calling 工具 handler 依赖
+    # 注册 function-calling 工具 handler 依赖
     register_handlers(
         reply_parser=reply_parser,
         risk_engine=risk_engine,
