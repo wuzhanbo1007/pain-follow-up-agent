@@ -133,7 +133,7 @@ pain-followup-demo/
 │   └── knowledge/              # RAG 知识库（ES）
 │       ├── loader.py           #   PDF/文档加载（Unstructured 自动解析 + OCR）
 │       ├── splitter.py         #   中文分块（按标题层级 + 800字递归切分）
-│       ├── embeddings.py       #   Embedding 提供方（SiliconFlow / 本地 bge-m3）
+│       ├── embeddings.py       #   Embedding 提供方（OpenAI 兼容 / 本地 bge-m3 / SiliconFlow 等）
 │       ├── es_store.py         #   ES 向量库封装（混合检索）
 │       ├── retriever.py        #   检索入口（指南/共识引用溯源）
 │       ├── ingest.py           #   批量入库入口
@@ -238,7 +238,7 @@ unstructured.partition.auto.partition()
 splitter.py → 按中文标题层级切分 → 800 字/块，重叠 100 字
        │
        ▼
-embeddings.py → SiliconFlow API（BAAI/bge-m3）→ 1024 维向量
+embeddings.py → OpenAI 兼容接口（Gitee AI 云端 bge-m3）→ 1024 维向量
        │
        ▼
 es_store.py → Elasticsearch
@@ -266,7 +266,8 @@ es_store.py → Elasticsearch
 | Function Calling | ChatOpenAI.bind_tools() |
 | 文档解析 | Unstructured（自动识别格式 + OCR） |
 | 向量库 | Elasticsearch（BAAI/bge-m3 embedding） |
-| Embedding | SiliconFlow API / 本地 sentence-transformers |
+| Embedding | OpenAI 兼容接口（当前 .env 指向 Gitee AI 云端 bge-m3，1024 维）；代码支持本地 bge-m3 / SiliconFlow / 阿里百炼 |
+| Reranker | Gitee AI 云端 bce-reranker-base_v1（本地 bge-reranker-large 可选） |
 | 数据库 | MySQL（21 表，库名 pain-followup） |
 | 包管理 | uv |
 | 前端 | Vue 3 + Pinia + Tailwind CSS + Vite |
