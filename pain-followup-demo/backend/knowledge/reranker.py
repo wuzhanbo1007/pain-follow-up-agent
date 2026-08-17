@@ -1,3 +1,4 @@
+# backend/knowledge/reranker.py
 """
 检索精排器 — bge-reranker (cross-encoder) 对召回候选逐对打分精排
 

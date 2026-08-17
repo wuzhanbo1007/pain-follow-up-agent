@@ -1,3 +1,4 @@
+<!-- frontend/src/App.vue -->
 <template>
   <DemoPage />
   <Toaster position="top-right" rich-colors />

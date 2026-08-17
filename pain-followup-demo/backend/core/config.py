@@ -1,3 +1,4 @@
+# backend/core/config.py
 """
 全局配置 — 从 .env 文件和环境变量读取
 """

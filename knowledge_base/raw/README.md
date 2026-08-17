@@ -1,7 +1,7 @@
-# PainSmart6.0 随访知识库 · 语料清单 (raw)
+# LANShing 疼痛智能随访系统 · RAG 原始语料清单 (raw)
 
-> 本目录存放用于「医学知识检索 RAG」的原始语料。建议先在此 `raw/` 存放原始文件，
-> 由入库脚本（P0）解析后写入 `../processed/` 与向量库（Elasticsearch）。
+> 本目录存放用于「医学知识检索 RAG」的原始语料。将 PDF、Markdown、TXT 等文件放入对应子目录，
+> 再由后端 `python -m knowledge.ingest` 解析、分块并写入 Elasticsearch。
 
 ## 目录结构
 ```
@@ -12,7 +12,7 @@ knowledge_base/
 │   ├── pathways/        # 临床路径
 │   ├── internal/        # 科室内部规范（PDF/Markdown/数据库表导出）
 │   └── README.md       # 本清单
-└── processed/           # （待建）分块 + 元数据后的入库文件
+└── processed/           # 可选：分块 + 元数据后的中间文件
 ```
 
 ## ✅ 已下载（可直接用于 RAG）

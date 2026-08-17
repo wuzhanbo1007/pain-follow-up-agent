@@ -1,3 +1,4 @@
+<!-- frontend/src/components/ControlPanel.vue -->
 <template>
   <div
     class="flex flex-col h-full"
@@ -44,5 +45,6 @@ const props = defineProps({
 
 defineEmits(['startFollowup', 'reset'])
 
-const canStart = computed(() => props.agentState?.name === 'IDLE')
+// 调度未在运行时允许启动（agentState 已从旧 IDLE 状态机改为调度状态）
+const canStart = computed(() => !props.isRunning)
 </script>

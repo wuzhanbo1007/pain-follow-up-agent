@@ -1,3 +1,4 @@
+<!-- frontend/src/components/DoctorDashboard.vue -->
 <template>
   <div class="flex flex-col h-full">
     <!-- 顶部标题栏 -->
@@ -157,13 +158,13 @@
               <div
                 v-for="(p, i) in (filterResult.skip_details || [])"
                 :key="i"
-                class="flex items-center justify-between py-2 px-3 rounded-lg bg-gray-800/30"
+                class="flex items-center justify-between gap-3 py-2 px-3 rounded-lg bg-gray-800/30"
               >
-                <div>
-                  <span class="text-xs text-white">{{ p.name }}</span>
-                  <span class="text-xs text-gray-600 ml-2">{{ p.patient_id }}</span>
+                <div class="min-w-0">
+                  <div class="text-xs text-white">{{ p.name }}</div>
+                  <div class="text-xs text-gray-500 truncate">· {{ p.diagnosis || '未填写诊断' }}</div>
                 </div>
-                <span class="text-xs text-yellow-400">{{ p.reason }}</span>
+                <span class="text-xs text-yellow-400 shrink-0">{{ p.reason }}</span>
               </div>
             </div>
           </div>

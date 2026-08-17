@@ -1,3 +1,4 @@
+# backend/data/clinical_llm.py
 # -*- coding: utf-8 -*-
 """
 基础病例叙述 —— 大模型生成（参照 virtual-hospital-agents 的分层设计）

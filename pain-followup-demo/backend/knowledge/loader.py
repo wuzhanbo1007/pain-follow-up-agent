@@ -1,3 +1,4 @@
+# backend/knowledge/loader.py
 """
 RAG 语料加载器 — 基于 Unstructured 的多格式文档解析
 

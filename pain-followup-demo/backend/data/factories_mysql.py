@@ -1,3 +1,4 @@
+# backend/data/factories_mysql.py
 # -*- coding: utf-8 -*-
 """
 PainSmart 9.0 — Faker + PolyFactory 声明式工厂

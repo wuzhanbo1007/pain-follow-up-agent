@@ -1,3 +1,4 @@
+<!-- frontend/src/pages/ChatPage.vue -->
 <template>
   <div class="lan-app lan-chat h-screen w-screen flex flex-col bg-white text-gray-800 overflow-hidden">
 
@@ -8,7 +9,7 @@
       <!-- 微信顶部导航 -->
       <div class="h-12 bg-[#EDEDED] flex items-center justify-between px-4 shrink-0 border-b border-[#D9D9D9]">
         <span class="text-lg font-bold text-gray-800">微信</span>
-        <span class="text-xs text-gray-500">{{ wsConnected ? '已连接' : '连接中…' }}</span>
+        <span class="text-xs text-gray-500">{{ store.wsConnected ? '已连接' : '连接中…' }}</span>
       </div>
 
       <!-- 搜索 -->
@@ -34,8 +35,8 @@
               <span class="text-base font-normal text-gray-900 truncate">{{ c.name }}</span>
               <span class="text-xs text-gray-400 shrink-0 ml-2">{{ c.time }}</span>
             </div>
-            <div class="text-sm text-gray-400 truncate mt-0.5">
-              {{ c.lastMsg || '' }}
+            <div class="flex items-center gap-2 mt-0.5">
+              <span class="text-sm text-gray-400 truncate flex-1">{{ c.lastMsg || '' }}</span>
             </div>
           </div>
         </div>
@@ -121,15 +122,17 @@
         <input
           v-model="inputText"
           type="text"
-          placeholder="输入回复…"
+          placeholder="输入消息"
           class="flex-1 bg-white rounded-md px-4 py-2 text-sm text-gray-700 placeholder-gray-400 border border-[#DDD] outline-none focus:border-green-400 transition"
           @keydown.enter="handleSend"
         />
         <button
           @click="handleSend"
-          class="px-5 py-2 rounded-md bg-[#07C160] hover:bg-[#06AD56] text-white text-sm font-medium transition shrink-0"
+          :disabled="!activeWaiting || sending"
+          class="px-5 py-2 rounded-md bg-[#07C160] hover:bg-[#06AD56] text-white text-sm font-medium transition shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          发送 <LanIcon name="right" />
+          <span v-if="sending">发送中…</span>
+          <span v-else>发送 <LanIcon name="right" /></span>
         </button>
       </div>
     </div>
@@ -137,57 +140,84 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
-import { io } from 'socket.io-client'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
+import { useDemoStore } from '../stores/demoStore'
 import LanIcon from '../components/LanIcon.vue'
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000'
 
-const wsConnected = ref(false)
+const store = useDemoStore()
+
 const filterReady = ref(false)
-const messages = ref([])
 const activeChat = ref(null)          // 当前选中对话的 patient_id
 const inputText = ref('')
 const chatRef = ref(null)
-const demoPatientId = ref(null)       // 演示患者 ID（马淑珍）
+const sending = ref(false)
 const allPatients = ref([])
 
 // 患者消息头像：显示患者姓氏（演示中用户扮演患者）
 function patientSurname(patientId) {
-  const p = allPatients.value.find(x => x.patient_id === patientId)
+  const p = allPatients.value.find(x => String(x.patient_id) === String(patientId))
   return (p?.name || '患')[0]
 }
 
-let socket = null
-
-// 诊断 → 科室映射
-function getDepartment(diagnosis) {
-  const map = {
-    '带状疱疹后神经痛': '疼痛科',
-    '癌性疼痛': '疼痛科',
-    '腰椎术后疼痛': '疼痛科',
-    '糖尿病周围神经痛': '疼痛科',
-  }
-  for (const [key, val] of Object.entries(map)) {
-    if (diagnosis && diagnosis.includes(key)) return val
-  }
+// 科室必须来自患者绑定的主治医生；后端未提供时只使用通用兜底，
+// 不再根据诊断猜测科室，避免出现“医生姓名和科室不匹配”。
+function getDepartment(_diagnosis) {
   return '疼痛科'
 }
 
-// ===== 微信主页的会话列表（只显示演示患者的医生联系人） =====
+// 每个患者对应的等待人工回复 episode（若有）
+function waitingByPatient(pid) {
+  return store.waitingEpisodes.find(e => String(e.patient_id) === String(pid)) || null
+}
+
+// ===== 微信主页的会话列表（按患者分组，等待人工回复的排前） =====
 const chatList = computed(() => {
   const map = {}
-  for (const m of messages.value) {
+  // 微信端只展示人工模拟患者；自动患者的对话由主页面决策日志展示。
+  const roster = store.filterResult?.send_list || []
+  const manualIds = new Set([
+    ...store.demoPatients
+      .filter(id => !roster.some(patient => String(patient.patient_id) === String(id) && patient.phone_callback))
+      .map(id => String(id)),
+    ...roster
+      .filter(patient => patient.input_source === 'human' && !patient.phone_callback)
+      .map(patient => String(patient.patient_id)),
+  ])
+  const rosterPatients = roster.filter(patient =>
+    !patient.phone_callback && manualIds.has(String(patient.patient_id)))
+  for (const patient of rosterPatients) {
+    const key = patient.patient_id
+    if (key == null) continue
+    const p = allPatients.value.find(x => String(x.patient_id) === String(key)) || patient
+    const diag = p?.diagnosis || ''
+    const doc = p?.doctor_name || ''
+    const dept = p?.department_name || getDepartment(diag)
+    const hospital = p?.hospital_name || '协和医院'
+    const isDemo = store.demoPatients.some(d => String(d) === String(key))
+    map[key] = {
+      id: key,
+      name: `${hospital}${dept} ${doc}`,
+      avatarColor: 'bg-green-500',
+      avatarText: '医',
+      lastMsg: '',
+      time: '',
+      isDemo,
+      waiting: !!waitingByPatient(key),
+    }
+  }
+  for (const m of store.messages) {
     const key = m.patient_id
+    if (key == null) continue
+    if (!manualIds.has(String(key))) continue
     if (!map[key]) {
-      const p = allPatients.value.find(x => x.patient_id === m.patient_id)
-      const isDemo = key === demoPatientId.value
-      if (!isDemo) continue  // 仅显示演示患者的对话
+      const p = allPatients.value.find(x => String(x.patient_id) === String(key))
       const diag = p?.diagnosis || ''
       const doc = p?.doctor_name || ''
-      // 科室/医院优先取数据库（p.department_name/hospital_name），缺省用诊断映射兜底
       const dept = p?.department_name || getDepartment(diag)
       const hospital = p?.hospital_name || '协和医院'
+      const isDemo = store.demoPatients.some(d => String(d) === String(key))
       map[key] = {
         id: key,
         name: `${hospital}${dept} ${doc}`,
@@ -195,14 +225,20 @@ const chatList = computed(() => {
         avatarText: '医',
         lastMsg: '',
         time: '',
+        isDemo,
+        waiting: !!waitingByPatient(key),
       }
     }
-    // 更新最后一条消息摘要
     const prefix = m.type === 'sent' ? '' : '我: '
-    map[key].lastMsg = prefix + (m.content || '').substring(0, 20)
+    // 列表中保留医护原始消息，不截断、不改写为摘要；长消息由列表项自动换行展示。
+    map[key].lastMsg = prefix + (m.content || '')
     map[key].time = m.timestamp || ''
+    if (waitingByPatient(key)) map[key].waiting = true
   }
-  return Object.values(map)
+  return Object.values(map).sort((a, b) => {
+    if (a.waiting !== b.waiting) return a.waiting ? -1 : 1
+    return 0
+  })
 })
 
 // ===== 对话详情 =====
@@ -211,9 +247,11 @@ const activeChatName = computed(() => {
   return c?.name || '疼痛随访助手'
 })
 
+const activeWaiting = computed(() => waitingByPatient(activeChat.value))
+
 const activeMessages = computed(() => {
   return activeChat.value
-    ? messages.value.filter(m => m.patient_id === activeChat.value)
+    ? store.messages.filter(m => String(m.patient_id) === String(activeChat.value))
     : []
 })
 
@@ -222,13 +260,27 @@ function enterChat(c) {
   inputText.value = ''
 }
 
-function handleSend() {
-  if (!inputText.value.trim() || !demoPatientId.value) return
-  socket?.emit('demo:simulate_reply', {
-    patient_id: demoPatientId.value,
-    reply_text: inputText.value.trim(),
-  })
-  inputText.value = ''
+async function handleSend() {
+  const waiting = activeWaiting.value
+  if (!inputText.value.trim() || !waiting || sending.value) return
+  sending.value = true
+  const pid = activeChat.value
+  const text = inputText.value.trim()
+  const p = allPatients.value.find(x => String(x.patient_id) === String(pid))
+  try {
+    await store.resumeEpisode(waiting.episode_id, text)
+    // 乐观追加患者回复，避免等待后端重新广播
+    store.addMessage({
+      type: 'reply', patient_id: pid,
+      patient_name: p?.name || '', content: text,
+      timestamp: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
+    })
+    inputText.value = ''
+  } catch (e) {
+    console.error('发送失败:', e)
+  } finally {
+    sending.value = false
+  }
 }
 
 watch(activeMessages, async () => {
@@ -241,66 +293,16 @@ onMounted(async () => {
   try {
     const res = await fetch(`${API_BASE}/api/patients`)
     allPatients.value = await res.json()
-  } catch (e) {}
+  } catch (e) { /* 非阻断 */ }
 
-  socket = io(API_BASE, { transports: ['websocket', 'polling'], reconnection: true })
-  socket.on('connect', () => { wsConnected.value = true; socket.emit('chat:request_sync') })
-  socket.on('disconnect', () => { wsConnected.value = false })
-
-  socket.on('agent:filter_result', () => { filterReady.value = true })
-
-  socket.on('agent:state_change', (data) => {
-    if (data.to === 'FETCHING') messages.value = []
-    if (!filterReady.value && data.to && !['IDLE', 'FETCHING'].includes(data.to)) {
+  // 收到名单后标记已就绪（过滤了空名单展示文案）
+  const unsub = watch(() => store.dispatch.status, (s) => {
+    if (s && s !== 'created' && s !== 'idle') {
       filterReady.value = true
+      unsub()
     }
-  })
-
-  // 演示患者选中 → 绑定为马淑珍
-  socket.on('demo:patients_selected', (data) => {
-    if (data.demo_patient_ids?.length) {
-      demoPatientId.value = data.demo_patient_ids[0]
-    }
-  })
-
-  // 医护消息（只收演示患者的）
-  socket.on('agent:wechat_sent', (data) => {
-    if (demoPatientId.value && data.patient_id !== demoPatientId.value) return
-    messages.value = [...messages.value, {
-      id: Date.now() + Math.random(),
-      type: 'sent',
-      patient_id: data.patient_id,
-      patient_name: data.patient_name,
-      content: data.message,
-    }]
-  })
-
-  socket.on('agent:clarification', (data) => {
-    if (demoPatientId.value && data.patient_id !== demoPatientId.value) return
-    messages.value = [...messages.value, {
-      id: Date.now() + Math.random(),
-      type: 'sent',
-      patient_id: data.patient_id,
-      patient_name: data.patient_name,
-      content: data.message,
-    }]
-  })
-
-  // 患者回复
-  socket.on('patient:reply', (data) => {
-    if (demoPatientId.value && data.patient_id !== demoPatientId.value) return
-    messages.value = [...messages.value, {
-      id: Date.now() + Math.random(),
-      type: 'reply',
-      patient_id: data.patient_id,
-      patient_name: data.patient_name || '',
-      content: data.text,
-    }]
-  })
-})
-
-onUnmounted(() => {
-  if (socket) { socket.disconnect(); socket = null }
+  }, { immediate: true })
+  if (store.messages.length) filterReady.value = true
 })
 </script>
 

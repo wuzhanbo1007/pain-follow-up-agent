@@ -1,3 +1,4 @@
+# backend/llm/model.py
 """统一 Chat Model 工厂（参照 Comet-main chat_model.py）
 
 设计要点（对齐 Comet 的“不用 AsyncOpenAI 直连”思路，但全异步）：

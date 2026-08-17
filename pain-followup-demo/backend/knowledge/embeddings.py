@@ -1,3 +1,4 @@
+# backend/knowledge/embeddings.py
 """
 Embedding 提供方 — SiliconFlow / 本地模型向量化
 

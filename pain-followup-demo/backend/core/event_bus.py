@@ -1,3 +1,4 @@
+# backend/core/event_bus.py
 """统一事件总线。
 
 业务层只发布领域事件，不直接依赖 Socket.IO。当前适配器保持原有前端事件名，

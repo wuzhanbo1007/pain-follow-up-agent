@@ -1,3 +1,4 @@
+# backend/routes/review.py
 """
 随访过程 Review REST 路由（需求二 F2.1–F2.8）
 
@@ -14,9 +15,8 @@ from fastapi import APIRouter, Query, Body, HTTPException
 
 from services.doctor_review import (
     submit_review, list_review_queue, get_review_statistics, get_session,
+    get_latest_transcripts, get_latest_sessions,
 )
-from db.followup_db import get_latest_transcripts, get_latest_sessions
-from agents.orchestrator import run_followup_pipeline
 from core.realtime import emit
 
 review_router = APIRouter(tags=["reviews"])
@@ -42,9 +42,10 @@ def api_session_transcripts():
 def api_reviews_latest(
     status: str = Query(None),
     today: str = Query(None),
+    dispatch_id: str = Query(None),
 ):
     """每个患者最新一次随访会话（按患者去重），供 Review 面板展示最新内容"""
-    rows = get_latest_sessions(today=today)
+    rows = get_latest_sessions(today=today, dispatch_id=dispatch_id)
     if status:
         rows = [r for r in rows if (r.get("track_status") or "") == status]
     return {"ok": True, "count": len(rows), "reviews": rows}
@@ -61,9 +62,9 @@ def api_list_reviews(
 
 
 @review_router.get("/api/reviews/stats")
-def api_review_stats(today: str = Query(None)):
+def api_review_stats(today: str = Query(None), dispatch_id: str = Query(None)):
     """F2.8 统计：审阅完成率 / 平均评分 / 需跟踪数"""
-    stats = get_review_statistics(today=today)
+    stats = get_review_statistics(today=today, dispatch_id=dispatch_id)
     return {"ok": True, **stats}
 
 
@@ -90,34 +91,3 @@ def api_submit_review(data: Optional[dict] = Body(None)):
     return {"ok": True, **result}
 
 
-@review_router.post("/api/sessions/run/{patient_id}")
-async def api_run_session(patient_id: str):
-    """
-    触发一次完整随访流水线（orchestrator 编排：B 判定 → C 执行 → D 总结）。
-    返回 session_id / risk_result / agent_summary /
-    dialogue_decision 等字段，并额外返回 b_decision / d_review 等编排结果。
-    """
-    try:
-        result = await run_followup_pipeline(patient_id)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail={"ok": False, "error": str(e)})
-    c = result.get("c_session", {}) or {}
-    emit({"type": "review:session_ready", "data": {
-        "session_id": c.get("session_id"),
-        "patient_id": patient_id,
-        "summary": c.get("agent_summary", ""),
-        "risk_level": (c.get("risk_result") or {}).get("level_label", ""),
-    }})
-    return {
-        "ok": True,
-        "session_id": c.get("session_id"),
-        "patient_id": patient_id,
-        "risk_result": c.get("risk_result"),
-        "agent_summary": c.get("agent_summary"),
-        "dialogue_decision": c.get("dialogue_decision"),
-        "b_decision": result.get("b_decision"),
-        "d_review": result.get("d_review"),
-        "review_id": result.get("review_id"),
-        "early_return": result.get("early_return", False),
-        "summary": result.get("summary"),
-    }

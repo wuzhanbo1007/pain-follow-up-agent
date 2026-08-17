@@ -1,3 +1,4 @@
+<!-- frontend/src/components/PlanReviewPanel.vue -->
 <template>
   <div class="lan-workspace h-full flex flex-col bg-gray-50 text-gray-800 overflow-hidden">
     <!-- 顶部工具栏 -->
@@ -222,8 +223,9 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { io } from 'socket.io-client'
 import { toast } from 'vue-sonner'
+import { getSocket } from '../composables/useWebSocket'
+import { useDemoStore } from '../stores/demoStore'
 import RefText from './RefText.vue'
 import LanIcon from './LanIcon.vue'
 
@@ -248,8 +250,9 @@ const genTotal = ref(0)
 const genCurrentName = ref('')
 const batchApproving = ref(false)
 const backendError = ref('')
-const wsConnected = ref(false)
-let socket = null
+const store = useDemoStore()
+// 复用页面级唯一连接状态（不新建 socket）
+const wsConnected = computed(() => store.wsConnected)
 
 const STATUS_MAP = {
   draft: ['草稿', 'bg-gray-100 text-gray-500'],
@@ -528,20 +531,22 @@ watch(() => props.patients, (list) => {
   if (list && list.length > 0) loadAllPlans()
 }, { immediate: true })
 
-// ---- WebSocket：监听实时草稿推送（出院触发 / 其他端生成） ----
-function connectWs() {
-  socket = io(props.apiBase, { transports: ['websocket', 'polling'], reconnection: true })
-  socket.on('connect', () => { wsConnected.value = true })
-  socket.on('disconnect', () => { wsConnected.value = false })
-  socket.on('plan:drafted', (data) => {
-    if (!data || !data.plan_id) return
-    const draft = makeDraft(data, new Date().toLocaleString('zh-CN'))
-    plans.value = { ...plans.value, [draft.patient_id]: draft }
-    if (!selectedPatientId.value) selectPatient({ patient_id: draft.patient_id })
-    toast.info('收到一份新的随访计划草稿')
-  })
+// ---- WebSocket：复用页面级唯一 socket，按需监听实时草稿推送 ----
+// （不新建连接；plan:drafted 由 routes/plan.py 经 core.realtime 推送）
+function onPlanDrafted(data) {
+  if (!data || !data.plan_id) return
+  const draft = makeDraft(data, new Date().toLocaleString('zh-CN'))
+  plans.value = { ...plans.value, [draft.patient_id]: draft }
+  if (!selectedPatientId.value) selectPatient({ patient_id: draft.patient_id })
+  toast.info('收到一份新的随访计划草稿')
 }
 
-onMounted(connectWs)
-onUnmounted(() => { if (socket) { socket.disconnect(); socket = null } })
+onMounted(() => {
+  const sock = getSocket()
+  if (sock) sock.on('plan:drafted', onPlanDrafted)
+})
+onUnmounted(() => {
+  const sock = getSocket()
+  if (sock) sock.off('plan:drafted', onPlanDrafted)
+})
 </script>

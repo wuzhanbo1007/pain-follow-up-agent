@@ -4,3 +4,6 @@ __pycache__/
 .env
 mock_data/history.db
 logs/
+# 本地开发/验证产物：不入库、不上传远程仓库
+tests/
+scripts/

@@ -1,3 +1,4 @@
+<!-- frontend/src/components/WechatFloatButton.vue -->
 <template>
   <button
     @click="handleClick"

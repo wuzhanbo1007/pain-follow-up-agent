@@ -1,0 +1,39 @@
+# config/llm_profiles.yaml — LLM 调用 profile（说明书 9.3 / 14.2 LLMGateway）
+# 模型、温度、超时、结构化输出、重试按 profile 配置。
+
+default:
+  temperature: 0.5
+  timeout: 20
+
+understand_reply:
+  temperature: 0.2
+  response_format: json_object
+
+compose_question:
+  temperature: 0.6
+
+compose_greeting:
+  temperature: 0.7
+
+compose_farewell:
+  temperature: 0.5
+
+summarize_history:
+  temperature: 0.3
+  max_tokens: 400
+
+patient_simulator:
+  temperature: 0.8
+  max_tokens: 12000
+
+ai_review:
+  temperature: 0.2
+  response_format: json_object
+
+policy_compiler:
+  temperature: 0.0
+  response_format: json_object
+
+plan_generation:
+  temperature: 0.4
+  response_format: json_object

@@ -1,3 +1,4 @@
+# backend/core/logging_config.py
 """
 Logging 配置模块 - 文件滚动日志 + 控制台输出 + 异常捕获
 """

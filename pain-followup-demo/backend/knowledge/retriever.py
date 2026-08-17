@@ -1,3 +1,4 @@
+# backend/knowledge/retriever.py
 """
 RAG 检索器（B 号 Agent 的知识检索封装）— 检索 + 引用溯源
 

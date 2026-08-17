@@ -1,3 +1,4 @@
+# backend/knowledge/splitter.py
 """
 RAG 多策略分块器 — 支持固定大小 / 结构感知 / 语义分块，多语言（中文/英文）
 

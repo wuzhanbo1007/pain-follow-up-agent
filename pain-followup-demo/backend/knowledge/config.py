@@ -1,3 +1,4 @@
+# backend/knowledge/config.py
 """
 RAG 知识库配置 — 从 .env / 环境变量读取
 RAG 知识库配置（向量库 / 嵌入 / 分块参数）

@@ -1,3 +1,4 @@
+<!-- frontend/src/components/LanIcon.vue -->
 <template>
   <svg
     class="lan-icon"

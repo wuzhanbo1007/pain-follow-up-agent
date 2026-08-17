@@ -1,0 +1,38 @@
+# config/followup_runtime.yaml — 今日随访运行配置（说明书 5.2）
+# 医护修改本文件即可调整业务日期与电话回访策略，无需改代码。
+
+business_date:
+  # 演示环境固定业务日期，便于复现同一批患者与测试结果。
+  DEMO_TODAY: "2026-07-15"
+  # 上线时将 DEMO_TODAY 置为 null；DateProvider 按业务时区动态获取当天日期。
+  # production: null
+
+base_roster:
+  source: database
+  # 应访判定由数据库计划到期日 + 患者状态 + 豁免字段计算（RosterDecider）
+  include_when: "plan_due_and_in_window"
+  skip_when:
+    - consent_status != active
+    - followup_status in [completed, hospitalized, on_leave, revisited]
+
+phone_callback_policy:
+  natural_language: "连续3天没回复的患者需要电话回访"
+  enabled: true
+
+# 手动演示患者 ID 列表（§6 / §11-11：只影响输入来源，不影响当天是否应随访）
+#   当天应访名单 ∩ manual_patient_ids → 手动演示（等待医护回复，interrupt/resume）
+#   当天应访名单 - manual_patient_ids → 自动演示（患者模拟回复）
+#   配置中的 ID 不在当天应访名单 → 忽略并记录日志，不强制纳入当天名单。
+#   不读取、不新增患者表中的"自动/手动模式"字段。
+manual_patient_ids:
+  - 15
+
+# 启动预填充随访计划草稿时跳过的患者（演示用，默认 = manual_patient_ids）
+prefill_skip_ids:
+  - 15
+
+# Checkpointer 持久化后端（§6：统一工厂，只允许一个实现）
+#   backend: memory（进程内，演示可恢复）| postgres（跨进程恢复，需配置 dsn）
+checkpointer:
+  backend: memory
+  # dsn: "postgresql://user:pass@host:5432/painsmart"

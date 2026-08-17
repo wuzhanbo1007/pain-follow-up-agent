@@ -1,3 +1,4 @@
+# backend/data/seed_mysql.py
 # -*- coding: utf-8 -*-
 """
 PainSmart 9.0 — Faker + PolyFactory → MySQL 播种器

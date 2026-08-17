@@ -1,3 +1,4 @@
+# backend/data/constants.py
 # -*- coding: utf-8 -*-
 """
 PainSmart 9.0 — 共享常量

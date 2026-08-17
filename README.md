@@ -1,49 +1,101 @@
-# LANShing疼痛随访智能体
+# LANShing 疼痛智能随访系统
 
-基于 **FastAPI + LangGraph 多 Agent + RAG** 的LANShing疼痛随访智能体。
+基于 FastAPI、Vue 3、LangGraph 和 RAG 的疼痛随访演示系统。系统把一次随访拆成“总调度 + 患者 Episode + 能力 Agent + 医生审阅”几个明确边界，支持自动模拟患者和人工模拟患者并行运行。
 
----
+## 项目介绍
 
-## 快速开始（拉取代码与运行）
+LANShing 疼痛智能随访系统面向出院后的疼痛患者随访场景，用于展示多智能体协作的随访流程。系统从数据库读取患者和随访计划，判断当天是否应随访，为每名患者创建独立的随访会话，并通过 WebSocket 将消息、决策日志、风险和审阅结果实时推送到医护端。
 
-### 1. 拉取代码
+系统支持以下核心场景：
+
+- 自动患者：由 `PatientSimulatorAgent` 根据患者病情和对话上下文生成回复。
+- 人工患者：等待医护在微信模拟页面中手动输入患者回复，不会自动弹出对话窗口。
+- 信息采集：围绕疼痛评分、睡眠、用药和副作用等随访槽位进行理解、补问和收集。
+- 风险识别：根据患者回复和结构化信息计算风险；出现绝望、剧烈痛苦等不稳定情绪时生成人工介入预警。
+- 未回复处理：向连续未回复患者发送首条消息，记录完整随访过程，最后提示电话回访但不虚构患者评分。
+- 过程审阅：每个患者的会话完成后生成 AI 审阅意见；总调度收齐全部患者报告后再展示本次统计结果。
+
+本项目是演示系统，患者和病历数据为模拟数据，不能替代真实医疗系统或临床判断。
+
+## 系统界面展示
+
+以下为 LANShing 疼痛智能随访系统的随访执行界面展示：
+
+![LANShing 疼痛智能随访系统界面](pain-followup-demo/pictures/LANShingmain.png)
+
+## 从远程仓库克隆并运行
+
+### 1. 克隆代码
 
 ```bash
 git clone https://github.com/wuzhanbo1007/pain-follow-up-agent.git
 cd pain-follow-up-agent
 ```
 
-已有仓库时同步最新代码：`git pull`
-
-### 2. 前置依赖
-
-| 依赖 | 版本 | 用途 |
-|---|---|---|
-| Python | 3.10+ | 后端 |
-| Node.js | 18+ | 前端 |
-| MySQL | 5.7+/8.x | 业务数据（21 表，库名 `pain-followup`；首次启动自动建表并播种 50 名模拟患者） |
-| Elasticsearch | 8.x | RAG 向量库（BM25 + kNN + RRF 混合检索） |
-
-> LLM / ES / MySQL 未配置时，后端自动降级为关键词 + 模板模式，Demo 不中断。
-
-### 3. 运行后端（端口 5000）
+已有本地仓库时，在项目根目录同步远程代码：
 
 ```bash
+git pull --ff-only
+```
+
+如果需要查看远程地址或当前分支：
+
+```bash
+git remote -v
+git branch --show-current
+```
+
+### 2. 准备基础服务
+
+后端运行需要：
+
+| 服务 | 用途 | 是否必须 |
+|---|---|---|
+| Python 3.10+ | 后端与 Agent 工作流 | 必须 |
+| Node.js 18+、npm | Vue 前端 | 必须 |
+| MySQL 5.7+/8.x | 患者、计划、会话和审阅数据 | 必须 |
+| Elasticsearch 8.x | RAG 混合检索 | 使用知识库时需要 |
+| LLM / Embedding / Reranker | 对话生成和知识检索 | 未配置时可降级运行 |
+
+先在 MySQL 中创建 `.env` 配置的数据库，例如：
+
+```sql
+CREATE DATABASE `pain-followup`
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
+```
+
+### 3. 配置并启动后端
+
+Windows PowerShell：
+
+```powershell
 cd pain-followup-demo/backend
-
-# 创建虚拟环境并安装依赖
 python -m venv .venv
-# Windows：.venv\Scripts\activate ；macOS/Linux：source .venv/bin/activate
-pip install -r requirements.txt "unstructured[pdf]"
-
-# 配置环境变量（编辑 LLM_API_KEY / DB / ES / Embedding 等）
-cp .env.example .env
-
-# 启动（首次启动会自动建表并播种模拟患者数据）
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+Copy-Item .env.example .env
+# 编辑 .env，填写 MySQL、LLM 等实际配置
 python app.py
 ```
 
-### 4. 运行前端（端口 3000）
+macOS/Linux：
+
+```bash
+cd pain-followup-demo/backend
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+cp .env.example .env
+# 编辑 .env，填写 MySQL、LLM 等实际配置
+python app.py
+```
+
+后端默认监听 `http://localhost:5000`。首次启动会读取运行配置、初始化应用上下文和数据库表；数据库为空时会按项目配置生成演示基础数据。
+
+### 4. 启动前端
+
+另开一个终端：
 
 ```bash
 cd pain-followup-demo/frontend
@@ -51,228 +103,194 @@ npm install
 npm run dev
 ```
 
-### 5. 访问
+前端默认地址为 `http://localhost:3000`：
 
-- 前端 Demo 页面：http://localhost:3000
-- 后端 API / WebSocket：http://localhost:5000
+- `http://localhost:3000/`：随访执行、决策日志、过程审阅和结果统计。
+- `http://localhost:3000/chat.html`：患者微信对话模拟页面。
 
----
+启动顺序建议为：先启动后端，再启动前端，最后在随访执行页面发起本次随访。
 
-## 一、架构概述
+## 整体架构
 
+系统采用“表现层、应用编排层、Agent 能力层、领域层、基础设施层、数据层”的分层结构。业务流程由工作流节点显式编排，单个能力 Agent 负责一个清晰任务，名单判定、覆盖度、风险和回访策略等确定性规则由领域服务负责。
+
+```text
+┌──────────────────────────────────────────────────────────────┐
+│ 前端：DemoPage / ChatPage / 审阅 / 日志 / 统计 / WebSocket      │
+└──────────────────────────────┬───────────────────────────────┘
+                               │ REST + Socket.IO
+┌──────────────────────────────▼───────────────────────────────┐
+│ routes：患者、计划、dispatch、episode、审阅、知识库、WS 事件   │
+└──────────────────────────────┬───────────────────────────────┘
+                               │
+┌──────────────────────────────▼───────────────────────────────┐
+│ services：DispatchService / EpisodeService / DoctorReview     │
+└──────────────────────────────┬───────────────────────────────┘
+                               │ LangGraph
+┌──────────────────────────────▼───────────────────────────────┐
+│ Agent 工作流：Dispatcher / PatientFollowup / Conversation     │
+│             PatientSimulator / Review / Planner               │
+└───────────────┬──────────────────────┬────────────────────────┘
+                │                      │
+┌───────────────▼──────────────┐ ┌─────▼────────────────────────┐
+│ 能力 Agent                   │ │ 领域规则与策略                │
+│ 回复理解、覆盖度、路由、话术 │ │ 名单、风险、回访、槽位、状态  │
+│ 情绪、模拟患者、AI 审阅      │ │ 确定性判断和安全护栏          │
+└───────────────┬──────────────┘ └─────┬────────────────────────┘
+                │                      │
+┌───────────────▼──────────────────────▼────────────────────────┐
+│ 基础设施：LLM Gateway、MySQL Repository、Checkpointer、Outbox │
+│             Elasticsearch RAG、实时事件和日志                  │
+└───────────────────────────────────────────────────────────────┘
 ```
-A 号 Planner → B 号 Scheduler → C 号 Execution → D 号 Summarizer
-   (计划生成)     (当日判定)      (ReACT 对话)      (内容总结)
 
-入口: app.py → bootstrap → Socket.IO + FastAPI
+### 一次随访的生命周期
+
+```text
+DispatcherAgent
+  ├─ 读取数据库候选患者
+  ├─ RosterDecider 判定当天应随访名单
+  ├─ CallbackPolicy 标记连续未回复患者
+  └─ 为每名患者创建一个独立 Episode
+
+DispatchService 并行启动所有 Episode
+  └─ PatientFollowupAgent
+       ├─ 发送首条随访消息
+       ├─ human：等待前端回复；simulator：调用患者模拟器
+       ├─ ConversationAgent 处理每一轮回复
+       │    ├─ ReplyUnderstandingAgent：结构化提取患者表达
+       │    ├─ CoverageEvaluator：判断 pain_nrs 等信息是否收齐
+       │    ├─ TurnRouter：继续追问、完成或转人工
+       │    └─ Greeting/Question/Farewell Composer：生成医护回复
+       ├─ RiskEvaluator：计算风险和人工预警
+       ├─ 持久化会话、消息、风险与审阅快照
+       └─ ReviewAgent：生成该患者的 AI 审阅意见和报告
+
+DispatchService 收集全部 Episode 报告
+  └─ 所有应随访患者结束后，前端才展示本次统计结果
 ```
 
-| Agent | 文件 | 类型 | 职责 |
-|---|---|---|---|
-| A 号 | `agents/planner.py` | LangGraph 工作流 | 出院随访计划生成 + 医生 HITL 审阅 |
-| B 号 | `services/daily_scheduler.py` | 规则判定函数 | 今日是否随访（纯规则引擎） |
-| C 号 | `agents/execution.py` | ReACT 自主 Agent | 多轮随访对话，LLM 持工具自主解析+追问 |
-| D 号 | `agents/summarizer.py` | LLM 分析函数 | 随访会话内容总结（摘要/风险/完成度） |
+### 调度与患者会话的关系
 
-C 号是唯一真正自主的 Agent，A 号是工作流，B/D 号是 LLM 增强判定函数。
+一次点击发起随访会生成一个唯一的 `dispatch_id`。总调度器根据当天应访名单创建多个患者 Episode，每个 Episode 使用独立的状态和会话标识，可以并行推进，不会因为某个手动患者等待回复而阻塞其他自动患者。
 
----
+每个 Episode 完成后立即保存自己的会话和报告，但总调度只有在所有应访患者都产生终态报告后才完成。前端审阅页面和统计组件都按当前 `dispatch_id` 读取，避免重新加载时混入上一次运行的数据。
 
-## 二、目录结构
+### 未回复患者
 
-```
+被电话回访策略标记的患者仍然会创建 Episode，并由随访助手发送一条首条消息；系统不会等待其回复。该患者的消息、会话、AI 审阅和报告都会进入随访过程审阅页面，风险评分显示为未评估，并提示“需要电话回访”。
+
+### 人工模拟患者
+
+配置为人工模式的患者不会自动弹出微信聊天窗口。医生点击患者后再打开对话；未打开前，列表展示原始医护消息内容，并按对话框单行高度截断显示。医护和患者消息都会写入决策日志。
+
+## 统计与审阅时机
+
+- 每个 Episode 完成后立即保存该患者的会话、风险、AI 审阅快照和报告。
+- 随访过程审阅页面按当前 `dispatch_id` 读取数据，避免重新加载时混入上一次运行内容。
+- 总调度器收齐本次所有 Episode 的终态报告后，才将 dispatch 标记为完成。
+- 随访结果统计组件只有在“已完成报告数 = 应随访人数”后才展示结果，因此手动患者未结束时不会提前统计。
+
+## 技术栈
+
+| 层级 | 技术 | 用途 |
+|---|---|---|
+| 前端框架 | Vue 3 | 页面和组件开发 |
+| 前端状态 | Pinia | 随访、消息、日志和审阅状态管理 |
+| 前端构建 | Vite、Tailwind CSS | 开发服务器、构建和界面样式 |
+| 实时通信 | Socket.IO | 后端向医护端推送消息、状态和日志 |
+| 后端框架 | FastAPI | REST API 和 ASGI 应用 |
+| 实时服务 | python-socketio | WebSocket/Socket.IO 服务端 |
+| Agent 编排 | LangGraph | Dispatcher、Episode、Conversation、Review 工作流 |
+| LLM 接口 | OpenAI 兼容 API、LangChain | 回复理解、话术生成、AI 审阅和模拟患者 |
+| 数据校验 | Pydantic | 领域模型和结构化 LLM 输出校验 |
+| 关系数据库 | MySQL、SQLAlchemy、PyMySQL | 患者、计划、会话、消息、风险和审阅持久化 |
+| 知识库 | Elasticsearch | BM25、向量 kNN 和 RRF 混合检索 |
+| 文档处理 | Unstructured、pypdf、Tesseract | PDF/Markdown/TXT 解析和 OCR |
+| 向量与精排 | OpenAI 兼容 Embedding、Gitee 或本地 Reranker | RAG 向量生成和候选精排 |
+
+LLM 不是每个流程节点的唯一判断来源。确定性业务规则由领域服务执行；LLM 主要用于自然语言理解、自然语言生成、患者模拟和 AI 审阅，并通过结构化模型和安全护栏约束输出。
+
+## 配置文件
+
+### `backend/.env`
+
+复制 `backend/.env.example` 后配置本机环境。常用变量如下：
+
+| 变量 | 作用 |
+|---|---|
+| `DB_HOST/DB_PORT/DB_USER/DB_PASSWORD/DB_NAME` | MySQL 业务数据库连接 |
+| `LLM_API_KEY/LLM_BASE_URL/LLM_MODEL` | 对话 LLM；未配置时走降级逻辑 |
+| `LLM_TIMEOUT/LLM_MAX_RETRIES` | LLM 超时和重试 |
+| `API_HOST/API_PORT/API_DEBUG` | FastAPI 服务 |
+| `EMBEDDING_*` | RAG 向量生成服务 |
+| `ES_*` | Elasticsearch 地址、认证和索引 |
+| `RERANKER_*` | 本地或 Gitee 精排服务 |
+| `RETRIEVE_TOP_K/RRF_KEYWORD_WEIGHT` | 混合检索参数 |
+| `DEMO_TODAY` | 必填的演示业务日期，格式为 `YYYY-MM-DD` |
+| `PAINSMART_LOG_*` | 日志级别、文件和轮转参数 |
+
+真实密钥和数据库密码只放在本机 `.env`，不要写入 README、`.env.example` 或提交到 Git。
+
+### `backend/config/followup_runtime.yaml`
+
+该文件用于医护可调整的运行规则：
+
+- `manual_patient_ids`：人工模拟患者 ID；未列出的应访患者使用患者模拟器。
+- `prefill_skip_ids`：启动预填充随访计划草稿时跳过的患者。
+- `phone_callback_policy`：连续未回复天数和电话回访开关。
+- `checkpointer`：`memory` 用于演示；跨进程恢复可配置 `postgres` 及 DSN。
+
+业务日期仍以 `.env` 的 `DEMO_TODAY` 为准，并应与演示数据日期保持一致。
+
+## 目录结构
+
+```text
 pain-followup-demo/
-├── backend/
-│   ├── app.py                  # 入口：FastAPI + Socket.IO + bootstrap
-│   ├── agents/                 # 真正的 Agent（仅自主型+工作流）
-│   │   ├── planner.py          #   A 号 随访计划生成
-│   │   ├── execution.py        #   C 号 随访执行（ReACT 自主 Agent）
-│   │   ├── summarizer.py       #   D 号 会话内容总结
-│   │   ├── orchestrator.py     #   编排器 B→C→D 串联
-│   │   └── state.py            #   LangGraph 状态定义
-│   ├── services/               # 业务服务（非 Agent）
-│   │   ├── followup_service.py #   随访服务（Ws 驱动 / 自动编排）
-│   │   ├── daily_scheduler.py  #   B 号 当日判定
-│   │   └── doctor_review.py    #   医生人工审阅管线
-│   ├── engine/                 # 领域引擎
-│   │   ├── react_core.py       #   ReACT 处理引擎（LLM + 5 工具）
-│   │   ├── risk_engine.py      #   风险评分引擎
-│   │   ├── auto_reply.py       #   自动患者回复模拟
-│   │   ├── followup_scheduler.py # 随访排程规则引擎
-│   │   ├── tool_definitions.py #   Function-calling 工具定义
-│   │   └── tool_executor.py    #   工具执行器
-│   ├── db/                     # 持久化层（MySQL，会话/计划/审阅 DAO）
-│   │   └── followup_db.py      #   会话/计划/审阅 DAO
-│   ├── data/                   # 种子数据
-│   │   ├── database.py         #   PatientDB + 数据库初始化
-│   │   └── patients.py         #   患者数据定义
-│   ├── prompts/                # LLM 提示词
-│   │   ├── react_prompts.py    #   C 号 ReACT 护士/追问/滚动摘要提示词
-│   │   ├── reply_parsing.py    #   患者回复结构化解析提示词
-│   │   ├── plan_generation.py  #   A 号 计划生成提示词
-│   │   ├── plan_system.py      #   A 号 强制 JSON 输出提示词
-│   │   ├── review_analysis.py  #   D 号 会话总结提示词
-│   │   ├── personalized_message.py # 个性化开场白/告别语
-│   │   └── clarification_message.py # 模糊回复澄清
-│   ├── llm/                    # LLM 封装层
-│   │   ├── client.py           #   统一 chat 接口
-│   │   ├── model.py            #   模型构建（bind_tools 等）
-│   │   ├── message_generator.py #  个性化消息生成
-│   │   └── parser.py           #   患者回复解析（NLP→结构化）
-│   ├── routes/                 # HTTP + WebSocket 路由
-│   │   ├── ws.py               #   Socket.IO 事件处理
-│   │   ├── review.py           #   审阅 REST API
-│   │   ├── plan.py             #   计划 REST API
-│   │   └── patients.py         #   患者 REST API
-│   ├── core/                   # 基础设施
-│   │   ├── config.py           #   全局配置
-│   │   ├── bootstrap.py        #   启动初始化
-│   │   ├── container.py        #   DI 容器
-│   │   ├── event_bus.py        #   事件总线
-│   │   └── realtime.py         #   WebSocket 桥接
-│   └── knowledge/              # RAG 知识库（ES）
-│       ├── loader.py           #   PDF/文档加载（Unstructured 自动解析 + OCR）
-│       ├── splitter.py         #   中文分块（按标题层级 + 800字递归切分）
-│       ├── embeddings.py       #   Embedding 提供方（OpenAI 兼容 / 本地 bge-m3 / SiliconFlow 等）
-│       ├── es_store.py         #   ES 向量库封装（混合检索）
-│       ├── retriever.py        #   检索入口（指南/共识引用溯源）
-│       ├── ingest.py           #   批量入库入口
-│       └── config.py           #   RAG 配置
-├── frontend/                   # Vue 3 + Pinia + Tailwind
-│   └── src/
-│       ├── pages/DemoPage.vue  #   主页面（三 Tab）
-│       ├── pages/ChatPage.vue  #   微信聊天页
-│       └── components/         #   审阅/对话/控制面板等
-└── knowledge_base/             # 知识库语料（不入 git）
-    └── raw/                    # 原始 PDF 文档
-        ├── consensus/          #   专家共识
-        ├── guidelines/         #   临床指南
-        ├── pathways/           #   诊疗路径
-        └── internal/           #   内部文档
+├─ backend/
+│  ├─ app.py                         # FastAPI + Socket.IO 入口
+│  ├─ agents/                        # Dispatcher、Episode、Conversation、Review 等 Agent
+│  ├─ agents/capability_agents/      # 回复理解、覆盖度、路由、话术、模拟器等能力
+│  ├─ services/                      # 调度、Episode、医生审阅门面
+│  ├─ domain/                        # 领域模型、覆盖度、风险、名单和回访策略
+│  ├─ infrastructure/                # MySQL、LangGraph、LLM、消息和实时事件适配
+│  ├─ routes/                        # REST 与 Socket.IO 事件
+│  ├─ prompts/                       # 各能力 Agent 的提示词模板
+│  ├─ knowledge/                     # 文档解析、Embedding、ES 混合检索和精排
+│  ├─ config/followup_runtime.yaml   # 随访运行规则
+│  ├─ .env.example                   # 环境变量模板
+│  ├─ requirements.txt               # 运行依赖
+│  └─ requirements-dev.txt           # 可选开发依赖
+├─ frontend/
+│  ├─ src/pages/DemoPage.vue         # 随访执行与结果统计
+│  ├─ src/pages/ChatPage.vue         # 患者微信对话模拟
+│  └─ src/components/                # 审阅、日志、统计等组件
+└─ knowledge_base/raw/               # RAG 原始 PDF/Markdown/TXT 语料
 ```
 
----
+## 数据库与知识库
 
-## 三、C 号 ReACT Agent 的工具
-
-LLM 在 `engine/react_core.py` 的 `run_tool_reflect` 中持 5 个 function-calling 工具，自主决定调用顺序：
-
-| # | 工具名 | 做什么 | 何时调用 |
-|---|---|---|---|
-| 1 | `parse_patient_reply` | 从患者回复提取 NRS / 睡眠 / 用药 / 副作用 | **每轮必调**，收到任何患者回复首先调用 |
-| 2 | `query_patient_history` | 查询近 7 天历史随访记录 | 需要了解疼痛趋势或补充背景时 |
-| 3 | `calculate_risk_score` | 计算风险评分（0-20）和等级 | NRS 提取到后，了解风险趋势调整语气 |
-| 4 | `escalate_alert` | 推医生预警通知 | 风险 ≥ 8 分或紧急情况 |
-| 5 | `finalize_followup` | 结束随访，输出摘要结束语 | 四项信息全部收齐后，或患者明确结束 |
-
-**护栏机制**：LLM 调用 `finalize_followup` 后系统检查四项（疼痛/睡眠/用药/副作用）是否都收集齐了——没齐就拦截，让 LLM 针对缺失项生成追问。硬上限 20 轮。
-
----
-
-## 四、对话流程（手动演示）
-
-```
-前端 WebSocket "demo:simulate_reply"
-  → routes/ws.py → FollowupService.on_patient_reply()
-    → _react_reflect → engine/react_core.run_tool_reflect()
-      → LLM 调用工具（parse → risk → 生成追问）
-    → 护栏检查 should_end + missing_items
-    → _send_question_text → WebSocket 推回前端显示
-```
-
-自动患者走 `agents/execution.py` LangGraph 循环，复用同一 ReACT 引擎。
-
----
-
-## 五、常用命令与环境变量
-
-> 首次拉取与运行请见文首「快速开始（拉取代码与运行）」。
-
-### 后续常用命令
+首次使用前确保 `.env` 中 MySQL 可连接。需要重新生成基础患者数据时，在 backend 目录执行：
 
 ```bash
-# 后端运行
-python app.py
+python -m data.seed_mysql --patients 50
+```
 
-# 新增包
-pip install 包名
+`--reset` 会清空并重建演示数据，使用前请确认连接的是演示库：
 
-# 导入 PDF 到知识库
+```bash
+python -m data.seed_mysql --reset
+```
+
+知识库入库与状态检查：
+
+```bash
 python -m knowledge.ingest
-
-# 查看向量库状态
 python -m knowledge.ingest --status
 ```
 
-### 环境变量（.env）
+LLM、Embedding、Reranker 或 Elasticsearch 不可用时，随访主流程仍可使用规则/模板降级；需要 RAG 计划生成或知识检索时，必须补齐相应服务配置。
 
-```ini
-LLM_API_KEY=sk-xxxx          # DeepSeek / Qwen 等 OpenAI 兼容 Key
-LLM_BASE_URL=https://api.deepseek.com
-LLM_MODEL=deepseek-chat
-DB_HOST=127.0.0.1            # MySQL 地址
-ES_HOST=http://127.0.0.1:9200 # Elasticsearch 地址
-DEMO_TODAY=2026-07-29        # 可选：固定演示日期
-```
+## 版权与数据说明
 
-未配置 Key 时自动降级为关键词/模板匹配，Demo 不中断。
-
----
-
-## 六、RAG 知识库
-
-### 文档加载流程
-
-```
-knowledge_base/raw/*.pdf / .txt
-       │
-       ▼
-unstructured.partition.auto.partition()
-   ├── 自动识别文件类型（PDF / TXT / MD / DOCX）
-   ├── 文本型 PDF → pdfminer 提取文字
-   ├── 扫描型 PDF → OCR 识别（chi_sim+eng）
-   ├── 表格自动检测
-   └── 元素分类（Title / NarrativeText / ListItem / Table）
-       │
-       ▼
-splitter.py → 按中文标题层级切分 → 800 字/块，重叠 100 字
-       │
-       ▼
-embeddings.py → OpenAI 兼容接口（Gitee AI 云端 bge-m3）→ 1024 维向量
-       │
-       ▼
-es_store.py → Elasticsearch
-```
-
-### 向量库
-
-| 后端 | 说明 |
-|------|------|
-| Elasticsearch 8.x | 唯一后端，支持 BM25+kNN+RRF 混合检索 |
-
-### 当前语料
-
-`knowledge_base/raw/` 下包含 18+ 个疼痛领域中文指南/共识 PDF（带状疱疹后神经痛、癌痛、神经病理性疼痛等），按 `consensus/` 和 `guidelines/` 子目录分类。
-
----
-
-## 七、技术栈
-
-| 层 | 技术 |
-|---|---|
-| 后端框架 | FastAPI + Socket.IO (ASGI) |
-| LLM | OpenAI 兼容接口（DeepSeek / Qwen），via LangChain |
-| Agent 编排 | LangGraph StateGraph |
-| Function Calling | ChatOpenAI.bind_tools() |
-| 文档解析 | Unstructured（自动识别格式 + OCR） |
-| 向量库 | Elasticsearch（BAAI/bge-m3 embedding） |
-| Embedding | OpenAI 兼容接口（当前 .env 指向 Gitee AI 云端 bge-m3，1024 维）；代码支持本地 bge-m3 / SiliconFlow / 阿里百炼 |
-| Reranker | Gitee AI 云端 bce-reranker-base_v1（本地 bge-reranker-large 可选） |
-| 数据库 | MySQL（21 表，库名 pain-followup） |
-| 包管理 | uv |
-| 前端 | Vue 3 + Pinia + Tailwind CSS + Vite |
-| 实时通信 | Socket.IO (server + client) |
-
----
-
-> 演示数据均为算法模拟生成，不含真实患者隐私信息。
+演示患者为模拟数据，不应作为真实医疗建议。`knowledge_base/raw` 中的指南、共识和内部材料应保留来源及版权信息，仅在获得授权的范围内用于内部检索和医生辅助审阅。

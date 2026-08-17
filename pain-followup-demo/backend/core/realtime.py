@@ -1,3 +1,4 @@
+# backend/core/realtime.py
 """
 实时通信桥 — 让 Agent 包在不循环依赖 app.py 的前提下，
 通过 WebSocket 向外推送事件（plan:drafted / review:session_ready 等）。

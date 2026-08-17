@@ -1,3 +1,4 @@
+<!-- frontend/src/components/RefText.vue -->
 <template>
   <span class="ref-text">
     <template v-for="(tok, i) in tokens" :key="i">

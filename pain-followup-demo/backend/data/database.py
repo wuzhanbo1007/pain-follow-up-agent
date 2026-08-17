@@ -1,3 +1,4 @@
+# backend/data/database.py
 # -*- coding: utf-8 -*-
 """
 PainSmart 9.0 — MySQL 数据访问层（Faker + PolyFactory 生成假数据，存入远端 MySQL）

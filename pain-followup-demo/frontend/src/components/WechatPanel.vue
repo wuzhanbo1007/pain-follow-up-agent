@@ -1,3 +1,4 @@
+<!-- frontend/src/components/WechatPanel.vue -->
 <template>
   <Transition name="panel-slide">
     <div

@@ -1,3 +1,4 @@
+# backend/llm/client.py
 """
 统一 LLM 客户端（多 Agent 架构改造 - 任务 1）
 

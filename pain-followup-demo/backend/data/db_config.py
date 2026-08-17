@@ -1,3 +1,4 @@
+# backend/data/db_config.py
 # -*- coding: utf-8 -*-
 """
 PainSmart 9.0 — MySQL 连接配置

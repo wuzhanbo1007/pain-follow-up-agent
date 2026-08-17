@@ -10,6 +10,30 @@
 
   <!-- 主界面 -->
   <div v-else class="lan-app w-screen h-screen flex flex-col bg-gray-50 text-gray-800 overflow-hidden">
+    <div
+      v-if="activeDoctorAlert"
+      class="fixed right-6 top-20 z-50 w-[360px] rounded-xl border-2 border-red-300 bg-red-50 p-4 shadow-2xl"
+      role="alert"
+    >
+      <div class="flex items-start gap-3">
+        <span class="text-2xl">⚠️</span>
+        <div class="min-w-0 flex-1">
+          <div class="font-bold text-red-800">即时人工预警</div>
+          <div class="mt-1 text-sm font-semibold text-red-900">
+            {{ activeDoctorAlert.message || `${activeDoctorAlert.patient_name || '患者'}情绪不稳定，需要人工介入` }}
+          </div>
+          <div v-if="activeDoctorAlert.reason" class="mt-2 text-xs leading-5 text-red-700">
+            触发原因：{{ activeDoctorAlert.reason }}
+          </div>
+          <button
+            class="mt-3 rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700"
+            @click="store.dismissDoctorAlert()"
+          >
+            我已知晓
+          </button>
+        </div>
+      </div>
+    </div>
     <!-- 顶部标题栏 -->
     <header class="lan-header bg-white border-b border-gray-200 flex items-center justify-between shrink-0">
       <div class="flex items-center gap-3 min-w-0">
@@ -47,6 +71,7 @@
       class="flex-1 min-h-0"
       :patients="allPatients"
       :api-base="API_BASE"
+      :can-review="!!finalStats"
     />
 
     <!-- 模式二：随访执行（沿用 v2.0 布局 — 业务流程第二步） -->
@@ -74,6 +99,7 @@
               :progress="store.progress"
               :logs="store.logs"
               :filter-result="filterResult"
+              :execution-progress="store.executionProgress"
               :generated-messages="generatedMessages"
             />
           </div>
@@ -103,6 +129,8 @@
       class="flex-1 min-h-0"
       :patients="allPatients"
       :api-base="API_BASE"
+      :dispatch-id="dispatch.dispatch_id"
+      :can-review="followupStarted || !!finalStats"
     />
 
     <!-- 左下角微信浮窗（始终保留） -->
@@ -111,9 +139,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useDemoStore } from '../stores/demoStore'
-import { io } from 'socket.io-client'
 import WechatFloatButton from '../components/WechatFloatButton.vue'
 import AgentThinking from '../components/AgentThinking.vue'
 import ControlPanel from '../components/ControlPanel.vue'
@@ -135,247 +163,44 @@ const tabs = [
 // Review 面板实例
 const reviewPanel = ref(null)
 // 切换到"随访过程审阅"时，如果随访已经开始，自动加载最新数据（无需手动点刷新）。
-// WebSocket 事件（review:session_ready）也会实时推送，双重保障。
+// WebSocket 事件（review:ready）也会实时推送，双重保障。
 watch(mode, (m) => {
-  if (m === 'review' && followupStarted.value) {
-    reviewPanel.value?.refresh()
-  }
+  if (m !== 'review') return
+  if (followupStarted.value || finalStats.value) reviewPanel.value?.refresh()
+  else reviewPanel.value?.resetState()
 })
 
-// ---------- 状态 ----------
+// ---------- 状态（全部来自 store，唯一 WebSocket 连接由 store.initSocket 管理） ----------
 const store = useDemoStore()
-const isRunning = ref(false)
-const generatedMessages = ref([])
-const filterResult = ref(null)
-const wsConnected = ref(false)
+const {
+  wsConnected, allPatients, followupStarted,
+  filterResult, finalStats, generatedMessages, isRunning,
+  activeDoctorAlert, dispatch,
+} = storeToRefs(store)
 const loading = ref(true)
-const allPatients = ref([])
-const replyMap = ref({})
-const phase = ref('idle') // 'idle' | 'running' | 'done'
-const finalStats = ref(null)
-const followupStarted = ref(false) // 拉取今日随访名单后变为 true
-
-// generatedMessages 的可变内部引用
-const generatedRef = []
 
 // 当前日期
 const currentDate = computed(() => {
   return new Date().toLocaleDateString('zh-CN')
 })
 
-// WebSocket 引用
-let socket = null
-
 // ---------- 初始化 ----------
-onMounted(async () => {
-  try {
-    const [pRes, rRes] = await Promise.all([
-      fetch(`${API_BASE}/api/patients`).then(r => r.json()),
-      fetch(`${API_BASE}/api/replies`).then(r => r.json()),
-    ])
-    allPatients.value = pRes
-    replyMap.value = rRes
-  } catch (e) {
-    console.error('API加载失败:', e)
-  } finally {
-    loading.value = false
-  }
-
-  // 建立 WebSocket
-  socket = io(API_BASE, {
-    transports: ['websocket', 'polling'],
-    reconnection: true,
-  })
-
-  socket.on('connect', () => {
-    wsConnected.value = true
-    console.log('[WS] 已连接')
-  })
-
-  socket.on('disconnect', () => {
-    wsConnected.value = false
-  })
-
-  socket.on('agent:state_change', (data) => {
-    store.handleStateChange(data)
-    // 从 IDLE 进入 FETCHING 时标记随访已开始，显示患者数量
-    if (data.from === 'IDLE' && data.to !== 'IDLE') {
-      followupStarted.value = true
-    }
-    // 如果页面打开时随访已经在进行中（已过 IDLE 阶段），也显示患者数量
-    if (!followupStarted.value && data.to && !['IDLE', 'FETCHING'].includes(data.to)) {
-      followupStarted.value = true
-    }
-  })
-
-  socket.on('agent:log', (data) => {
-    store.addLog({ ...data, id: Date.now() + Math.random() })
-  })
-
-  socket.on('agent:filter_result', (data) => {
-    filterResult.value = data
-    store.stats = {
-      ...store.stats,
-      skip_count: data.skip_count || 0,
-      send_count: data.send_count || 0,
-    }
-  })
-
-  // 计划生成后重新拉患者列表，让 followup_detail.frequency 刷新为 LLM 推断值
-  socket.on('plan:drafted', async () => {
-    try {
-      const r = await fetch(`${API_BASE}/api/patients`).then(r => r.json())
-      allPatients.value = r
-    } catch (e) { console.error('[plan:drafted] 刷新患者列表失败', e) }
-  })
-
-  socket.on('agent:progress', (data) => {
-    store.handleProgress(data)
-    if (data.phase === 'sending') {
-      store.stats = { ...store.stats, sent_count: data.current }
-    }
-    if (data.phase === 'generating') {
-      store.stats = { ...store.stats, total_patients: data.total }
-    }
-  })
-
-  socket.on('agent:tool_call', (data) => {
-    if (data.tool === 'generate_personalized_message' && data.status === 'end') {
-      const res = data.result || {}
-      const item = {
-        patient_id: res.patient_id || data.params?.patient?.patient_id,
-        patient_name: res.patient_name || data.params?.patient?.name,
-        message: res.message || '',
-        basis: res.generation_basis || {},
-      }
-      generatedRef.push(item)
-      generatedMessages.value = [...generatedRef]
-    }
-  })
-
-  socket.on('agent:wechat_sent', (data) => {
-    store.addMessage({
-      type: 'sent',
-      patient_id: data.patient_id,
-      patient_name: data.patient_name,
-      content: data.message,
-    })
-  })
-
-  socket.on('agent:clarification', (data) => {
-    store.addMessage({
-      type: 'sent',
-      patient_id: data.patient_id,
-      patient_name: data.patient_name,
-      content: data.message,
-    })
-  })
-
-  socket.on('patient:reply', (data) => {
-    store.addMessage({
-      type: 'reply',
-      patient_id: data.patient_id,
-      patient_name: data.patient_name || '',
-      content: data.text,
-    })
-    store.stats = { ...store.stats, replied_count: store.stats.replied_count + 1 }
-  })
-
-  socket.on('agent:risk_scored', (data) => {
-    const s = { ...store.stats }
-    if (data.level === 'high') {
-      s.high_risk_count = (s.high_risk_count || 0) + 1
-    } else if (data.level === 'medium') {
-      s.medium_risk_count = (s.medium_risk_count || 0) + 1
-    } else {
-      s.low_risk_count = (s.low_risk_count || 0) + 1
-    }
-    store.stats = s
-
-    // 所有已评分患者都进入"风险评分结果"列表（含高危），
-    // 确保马淑珍这类重点患者也能在页面上完整展示，而不是被刻意排除。
-    store.addAlert({
-      patient_id: data.patient_id,
-      patient_name: data.patient_name,
-      doctor_name: data.doctor_name || '',
-      risk_level: data.level,
-      risk_score: data.total_score,
-      nrs: data.nrs,
-      reason: data.reason || '',
-      timestamp: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-    })
-  })
-
-  socket.on('doctor:alert', (data) => {
-    // 只更新预警计数，不再重复添加到 alerts（agent:risk_scored 已添加该患者）
-    store.stats = { ...store.stats, alert_count: store.stats.alert_count + 1 }
-  })
-
-  socket.on('doctor:callback_alert', (data) => {
-    store.addAlert({ ...data, risk_level: 'callback' })
-    if (data.type === 'no_reply') {
-      store.stats = { ...store.stats, no_reply_count: (store.stats.no_reply_count || 0) + 1 }
-    }
-  })
-
-  socket.on('agent:final_stats', (data) => {
-    console.log('[Demo] 收到最终统计:', data)
-    finalStats.value = data
-    // 用最终统计覆盖面板顶部计数（sent_count / no_reply_count 等）
-    store.stats = { ...store.stats, ...data }
-    phase.value = 'done'
-    store.markAllStepsDone()
-  })
-
-  socket.on('agent:reset', () => {
-    generatedRef.length = 0
-    generatedMessages.value = []
-    filterResult.value = null
-    isRunning.value = false
-    phase.value = 'idle'
-    finalStats.value = null
-    followupStarted.value = false
-    // 新一轮随访启动时，归零审阅面板统计与列表
-    reviewPanel.value?.resetState()
-  })
-
-  socket.on('agent:connected', (data) => {
-    console.log('[WS] Agent 就绪，患者数:', data.total_patients)
-  })
-})
-
-onUnmounted(() => {
-  if (socket) {
-    socket.disconnect()
-    socket = null
-  }
+onMounted(() => {
+  // WebSocket 单例与患者列表由入口（main.js）的 store.initSocket() 建立，
+  // 这里只关掉加载态，避免重复连接 / 重复接线导致事件被处理两次。
+  loading.value = false
 })
 
 // ---------- 动作 ----------
-function sendWs(event, data = {}) {
-  socket?.emit(event, data)
-}
-
 function handleStartFollowup() {
   if (isRunning.value) return
-  isRunning.value = true
-  phase.value = 'running'
-  finalStats.value = null
-  store.reset()
-  generatedRef.length = 0
-  generatedMessages.value = []
-  filterResult.value = null
-  sendWs('demo:start_followup', { speed: 1.0 })
+  // 内部 reset() 并发送 dispatch:start（说明书 13）；已发送人数
+  // 由 store 按 dispatch:roster_ready / episode:message 动态记录。
+  store.startDispatch()
 }
 
 function handleReset() {
-  isRunning.value = false
-  phase.value = 'idle'
-  finalStats.value = null
-  generatedRef.length = 0
-  generatedMessages.value = []
-  filterResult.value = null
   store.reset()
-  sendWs('demo:reset')
+  reviewPanel.value?.resetState()
 }
 </script>

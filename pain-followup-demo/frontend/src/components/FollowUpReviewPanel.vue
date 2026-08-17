@@ -1,3 +1,4 @@
+<!-- frontend/src/components/FollowUpReviewPanel.vue -->
 <template>
   <div class="lan-workspace h-full flex flex-col bg-gray-50 text-gray-800 overflow-hidden">
     <!-- 统计栏（F2.8） -->
@@ -44,7 +45,7 @@
           class="lan-compact-control text-sm border border-gray-200 rounded-lg px-2 py-1 outline-none focus:border-blue-400" />
       </label>
       <div class="flex-1"></div>
-      <button @click="refresh" class="lan-btn lan-btn-outline text-sm px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600"><LanIcon name="reload" />刷新</button>
+      <button @click="refresh" :disabled="!canReview" class="lan-btn lan-btn-outline text-sm px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"><LanIcon name="reload" />刷新</button>
       <div class="flex items-center gap-1.5 text-xs" :class="wsConnected ? 'text-green-600' : 'text-red-400'">
         <span class="w-2 h-2 rounded-full" :class="wsConnected ? 'bg-green-500' : 'bg-red-400'"></span>
         <span>{{ wsConnected ? '实时已连接' : '实时断开' }}</span>
@@ -63,8 +64,8 @@
         </div>
         <div v-if="displayedReviews.length === 0" class="px-4 py-10 text-center text-gray-400 text-sm">
           <div class="text-4xl mb-3">🗂️</div>
-          <div>暂无随访会话</div>
-          <div class="text-xs mt-1 text-gray-300">请在「随访执行」中触发随访后再查看</div>
+          <div>{{ canReview ? '暂无随访会话' : '本次随访尚未开始' }}</div>
+          <div class="text-xs mt-1 text-gray-300">{{ canReview ? '患者对话完成后会自动同步到这里' : '开始随访后即可实时接收单个患者的审阅内容' }}</div>
         </div>
         <div
           v-for="r in displayedReviews" :key="r.patient_id"
@@ -118,6 +119,10 @@
           <!-- Agent 摘要 -->
           <div v-if="sessionDetail.agent_summary" class="mb-3 px-4 py-2.5 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-800">
             🤖 {{ sessionDetail.agent_summary }}
+          </div>
+
+          <div v-if="isNoReplySession" class="mb-3 px-4 py-2.5 bg-orange-50 border border-orange-200 rounded-xl text-sm text-orange-800">
+            📩 本次已发送随访消息，患者未回复；系统未等待患者回复，已按电话回访流程完成本次记录。
           </div>
 
           <!-- AI 自动审阅意见（D 号 Agent） -->
@@ -223,14 +228,18 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { io } from 'socket.io-client'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { toast } from 'vue-sonner'
+import { getSocket } from '../composables/useWebSocket'
+import { useDemoStore } from '../stores/demoStore'
 import LanIcon from './LanIcon.vue'
 
 const props = defineProps({
   patients: { type: Array, default: () => [] },
   apiBase: { type: String, default: 'http://localhost:5000' },
+  dispatchId: { type: String, default: '' },
+  // 只有本次 dispatch 汇总完成后才允许读取审阅数据。
+  canReview: { type: Boolean, default: false },
 })
 
 const TRACK = [
@@ -292,8 +301,9 @@ const filterStatus = ref('')
 const busy = ref(false)
 const submitted = ref(false)
 const backendError = ref('')
-const wsConnected = ref(false)
-let socket = null
+const store = useDemoStore()
+// 复用页面级唯一连接状态（不新建 socket）
+const wsConnected = computed(() => store.wsConnected)
 
 const stats = ref({ total: 0, pending_track: 0, tracking: 0, resolved: 0, need_revisit: 0, avg_score: null })
 
@@ -309,30 +319,40 @@ const sessionByPatient = computed(() => {
 })
 // 仅显示在应随访名单中的会话记录（过滤历史累积的脏数据）
 const displayedReviews = computed(() => {
-  const needIds = new Set(needFollowup.value.map(p => p.patient_id))
-  return reviews.value.filter(r => needIds.has(r.patient_id))
+  const needIds = new Set(needFollowup.value.map(p => String(p.patient_id)))
+  if (needIds.size === 0) return reviews.value
+  return reviews.value.filter(r => needIds.has(String(r.patient_id)))
 })
 
 function patientName(pid) {
-  const p = props.patients.find(x => x.patient_id === pid)
+  const p = props.patients.find(x => String(x.patient_id) === String(pid))
   return p ? p.name : (pid || '未知患者')
 }
 const sessionPatientId = ref('')
 const currentPatient = computed(() =>
-  props.patients.find(x => x.patient_id === sessionPatientId.value) || null
+  props.patients.find(x => String(x.patient_id) === String(sessionPatientId.value)) || null
 )
+const isNoReplySession = computed(() => {
+  const transcript = sessionDetail.value?.transcript_json || []
+  return Boolean(
+    sessionDetail.value?.agent_summary?.includes('未回复') &&
+    !transcript.some(message => message.role === 'patient'),
+  )
+})
 
 async function loadStats() {
+  if (!props.canReview || !props.dispatchId) return
   try {
     const today = new Date().toISOString().slice(0, 10)
-    const res = await fetch(`${props.apiBase}/api/reviews/stats?today=${today}`).then(r => r.json())
+    const res = await fetch(`${props.apiBase}/api/reviews/stats?today=${today}&dispatch_id=${encodeURIComponent(props.dispatchId)}`).then(r => r.json())
     if (res.ok) stats.value = res
   } catch (e) { /* 非阻断 */ }
 }
 async function loadReviews() {
+  if (!props.canReview || !props.dispatchId) return
   try {
     const today = new Date().toISOString().slice(0, 10)
-    const qsParts = [`today=${today}`]
+    const qsParts = [`today=${today}`, `dispatch_id=${encodeURIComponent(props.dispatchId)}`]
     if (filterStatus.value) qsParts.push(`status=${encodeURIComponent(filterStatus.value)}`)
     const res = await fetch(`${props.apiBase}/api/reviews/latest?${qsParts.join('&')}`).then(r => r.json())
     if (res.ok) reviews.value = res.reviews || []
@@ -382,39 +402,72 @@ async function submitReview() {
   finally { busy.value = false }
 }
 
-function refresh() { backendError.value = ''; loadReviews(); loadStats() }
-
-function connectWs() {
-  socket = io(props.apiBase, { transports: ['websocket', 'polling'], reconnection: true })
-  socket.on('connect', () => { wsConnected.value = true })
-  socket.on('disconnect', () => { wsConnected.value = false })
-  socket.on('review:session_ready', (data) => {
-    if (!data || !data.session_id) return
-    toast.info(`${patientName(data.patient_id)} 的一次随访会话待审阅`)
-    loadReviews(); loadStats()
-    // 当前未查看会话，或正在查看该患者 → 切换到最新会话，避免一直显示最早一次
-    const viewingSame = sessionPatientId.value && data.patient_id === sessionPatientId.value
-    if (!sessionDetail.value || viewingSame) {
-      selectedReview.value = null
-      score.value = 0; comment.value = ''; trackStatus.value = 'followup_done'
-      loadSession(data.session_id)
-    }
-  })
-  socket.on('review:auto_done', (data) => {
-    if (data) {
-      const msg = `自动演示完成：生成 ${data.generated} 条随访会话` +
-        (data.skipped ? `，跳过 ${data.skipped} 条已存在` : '')
-      toast.success(msg)
-    }
-    loadReviews(); loadStats()
-  })
+function refresh() {
+  backendError.value = ''
+  if (!props.canReview || !props.dispatchId) {
+    resetState()
+    return
+  }
+  loadReviews(); loadStats()
 }
 
-// 页面加载时不再预拉取历史，避免「一进页面内容就已生成好」。
-// 内容只在点击「开始今天随访」、随访真正运行（WS 推送 review:session_ready / review:auto_done）后才出现；
-// 如需查看历史，可点右上角「刷新」手动拉取。
-onMounted(() => { connectWs() })
-onUnmounted(() => { if (socket) { socket.disconnect(); socket = null } })
+// 复用页面级唯一 socket：仅按需挂/卸本面板关心的新架构事件，不再新建连接。
+// 审阅数据由后端 ReviewGraph 完成后经 EventOutbox 推送 review:ready；
+// 单个患者 report_ready 会先把会话原文同步出来，review_ready 再补齐 AI 审阅。
+function onReviewReady(data) {
+  if (!data || !props.canReview) return
+  loadReviews(); loadStats()
+  if (data.patient_id) toast.info(`${patientName(data.patient_id)} 的 AI 随访审阅已就绪`)
+}
+function onEpisodeReportReady(data) {
+  if (!data || !props.canReview) return
+  loadReviews(); loadStats()
+}
+function onDispatchReportReady() {
+  if (props.canReview) {
+    loadReviews(); loadStats()
+  }
+}
+
+let wiredSocket = null
+
+function wireRealtime() {
+  const sock = getSocket()
+  if (!sock || wiredSocket === sock) return
+  if (wiredSocket) unwireRealtime()
+  sock.on('episode:report_ready', onEpisodeReportReady)
+  sock.on('review:ready', onReviewReady)
+  sock.on('dispatch:report_ready', onDispatchReportReady)
+  wiredSocket = sock
+}
+
+function unwireRealtime() {
+  if (!wiredSocket) return
+  wiredSocket.off('episode:report_ready', onEpisodeReportReady)
+  wiredSocket.off('review:ready', onReviewReady)
+  wiredSocket.off('dispatch:report_ready', onDispatchReportReady)
+  wiredSocket = null
+}
+
+onMounted(() => {
+  wireRealtime()
+})
+onUnmounted(() => {
+  unwireRealtime()
+})
+
+watch(wsConnected, () => {
+  wireRealtime()
+})
+
+watch(() => props.canReview, (can) => {
+  if (can) refresh()
+  else resetState()
+})
+
+watch(() => props.dispatchId, () => {
+  if (props.canReview) refresh()
+})
 
 // 每次「打开/进入」Review 面板时归零：统计栏回到 0、会话列表清空，
 // 不预载后端历史审阅数据，等医生手动 review（提交）后再实时统计。

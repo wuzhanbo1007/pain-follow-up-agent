@@ -1,3 +1,4 @@
+# backend/db/followup_db.py
 # -*- coding: utf-8 -*-
 """
 随访计划 / 会话 / 审阅 数据访问层（MySQL 版，对应《数据库重构方案_MySQL版.md》§4.6/4.7/4.10）
@@ -338,6 +339,7 @@ def get_session(session_id):
             return None
         d = _session_to_dict(sess)
         d["ai_review"] = get_review_ai(session_id)
+        d["risk_result"] = get_review_risk(session_id, d.get("agent_summary"))
         return d
 
 
@@ -354,6 +356,75 @@ def get_review_ai(session_id):
             .order_by(DoctorReview.reviewed_at.desc())
         ).first()
         return r.ai_review if r else None
+
+
+def _review_risk_result(review, agent_summary=""):
+    """从审阅快照恢复风险结果，兼容旧版未在 session 表保存风险的记录。"""
+    if not review:
+        review_risk = None
+        ai_review = None
+    else:
+        snapshot = review.audit_snapshot or {}
+        review_risk = snapshot.get("risk_result") if isinstance(snapshot, dict) else None
+        ai_review = review.ai_review or {}
+
+    if isinstance(review_risk, dict) and review_risk:
+        normalized = dict(review_risk)
+        if normalized.get("total_score") is None and normalized.get("score") is not None:
+            normalized["total_score"] = normalized["score"]
+        return normalized
+
+    # 旧记录没有 risk_result 时，AI 审阅仍可能保留风险等级和评分。
+    ai_level = ai_review.get("risk_level") if isinstance(ai_review, dict) else None
+    ai_score = ai_review.get("total_score") if isinstance(ai_review, dict) else None
+    if ai_level:
+        labels = {
+            "high": "高风险", "high_risk": "高风险",
+            "medium": "中风险", "medium_risk": "中风险",
+            "low": "低风险", "low_risk": "低风险",
+            "unknown": "未评估",
+        }
+        return {
+            "level": ai_level,
+            "score": ai_score,
+            "total_score": ai_score,
+            "level_label": labels.get(ai_level, ai_level),
+        }
+
+    # 未回复患者没有评分，但需要明确展示为“未评估”，而不是“未知”。
+    if "未回复" in (agent_summary or ""):
+        return {
+            "level": "unknown",
+            "score": None,
+            "total_score": None,
+            "level_label": "未评估",
+            "action": "电话回访",
+        }
+    return None
+
+
+def get_review_risk(session_id, agent_summary=""):
+    """返回会话对应的风险结果，优先读取审阅快照。"""
+    try:
+        session_id = int(session_id)
+    except (TypeError, ValueError):
+        return None
+    with _session() as s:
+        review = s.scalars(
+            select(DoctorReview)
+            .where(DoctorReview.session_id == session_id)
+            .order_by(DoctorReview.reviewed_at.desc())
+        ).first()
+        return _review_risk_result(review, agent_summary)
+
+
+def _review_dispatch_id(review):
+    if not review:
+        return None
+    snapshot = review.audit_snapshot or {}
+    if not isinstance(snapshot, dict):
+        return None
+    return snapshot.get("dispatch_id")
 
 
 def list_sessions_by_doctor(doctor_id, patient_id=None):
@@ -476,6 +547,23 @@ def attach_ai_review(review_id, ai_review):
         return True
 
 
+def update_review_audit_snapshot(review_id, patch):
+    """幂等补充审阅快照，供已有审阅记录补写风险结果。"""
+    try:
+        review_id = int(review_id)
+    except (TypeError, ValueError):
+        return False
+    with _session() as s:
+        review = s.get(DoctorReview, review_id)
+        if not review:
+            return False
+        snapshot = dict(review.audit_snapshot or {})
+        snapshot.update(patch or {})
+        review.audit_snapshot = snapshot
+        s.commit()
+        return True
+
+
 def list_reviews(status=None, patient_id=None):
     with _session() as s:
         stmt = select(DoctorReview)
@@ -488,7 +576,7 @@ def list_reviews(status=None, patient_id=None):
     return [_review_to_dict(r) for r in rows]
 
 
-def get_latest_sessions(today=None):
+def get_latest_sessions(today=None, dispatch_id=None):
     """返回每个患者最新一次随访会话（按 created_at DESC 去重），并附带该会话的审阅信息。"""
     with _session() as s:
         sessions = s.scalars(
@@ -496,17 +584,22 @@ def get_latest_sessions(today=None):
             .order_by(FollowupSession.patient_id, FollowupSession.created_at.desc())
         ).all()
         reviews = s.scalars(select(DoctorReview)).all()
-    latest = {}
-    for sess in sessions:
-        if sess.patient_id in latest:
-            continue
-        latest[sess.patient_id] = sess
     rev_by_session = {}
     for r in reviews:
         if r.session_id is None:
             continue
         if r.session_id not in rev_by_session:
             rev_by_session[r.session_id] = r
+    if dispatch_id:
+        sessions = [
+            sess for sess in sessions
+            if _review_dispatch_id(rev_by_session.get(sess.session_id)) == dispatch_id
+        ]
+    latest = {}
+    for sess in sessions:
+        if sess.patient_id in latest:
+            continue
+        latest[sess.patient_id] = sess
     result = []
     for pid, sess in latest.items():
         if today:
@@ -515,6 +608,7 @@ def get_latest_sessions(today=None):
                 continue
         d = _session_to_dict(sess)
         rev = rev_by_session.get(sess.session_id)
+        d["risk_result"] = _review_risk_result(rev, d.get("agent_summary"))
         if rev:
             d["review_id"] = rev.review_id
             d["doctor_score"] = rev.score
@@ -533,7 +627,7 @@ def get_latest_sessions(today=None):
     return result
 
 
-def review_stats(today=None):
+def review_stats(today=None, dispatch_id=None):
     """统计基于每个患者最新一次随访会话的审阅。"""
     with _session() as s:
         sessions = s.scalars(select(FollowupSession)).all()
@@ -546,6 +640,11 @@ def review_stats(today=None):
         seen.add(sess.patient_id)
         latest_sids.add(sess.session_id)
     latest_reviews = [r for r in reviews if r.session_id in latest_sids]
+    if dispatch_id:
+        latest_reviews = [
+            r for r in latest_reviews
+            if _review_dispatch_id(r) == dispatch_id
+        ]
     if today:
         latest_reviews = [
             r for r in latest_reviews
@@ -574,5 +673,6 @@ __all__ = [
     "create_session", "get_today_session", "update_session", "get_session",
     "get_review_ai", "list_sessions_by_doctor", "get_latest_transcripts",
     "create_review", "get_review_by_session", "attach_ai_review",
+    "update_review_audit_snapshot",
     "list_reviews", "get_latest_sessions", "review_stats",
 ]

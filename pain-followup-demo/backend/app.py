@@ -1,3 +1,4 @@
+# backend/app.py
 """
 FastAPI + WebSocket 主服务 — 慢性疼痛随访智能体后端
 
@@ -23,7 +24,6 @@ from core.logging_config import configure_logging, get_logger
 configure_logging("painsmart")
 log = get_logger("painsmart")
 
-from core import runtime
 from core.realtime import set_socketio
 from core.bootstrap import bootstrap
 from knowledge.retriever import warm_store
@@ -60,15 +60,20 @@ try:
     from routes.plan import plan_router
     from routes.review import review_router
     from routes.patients import patients_router
+    from routes.dispatches_route import dispatches_router
+    from routes.episodes_route import episodes_router
     from routes.ws import register_ws_events
 
     app.include_router(knowledge_router)
     app.include_router(plan_router)
     app.include_router(review_router)
     app.include_router(patients_router)
+    app.include_router(dispatches_router)
+    app.include_router(episodes_router)
     register_ws_events(sio)
     log.info("多 Agent / RAG / REST / WS 路由已注册: "
-             "/api/knowledge /api/plans /api/reviews /api/patients / WS 事件")
+             "/api/knowledge /api/plans /api/reviews /api/patients "
+             "/api/followups(dispatches|episodes) / WS 事件")
 except Exception as e:
     log.warning("多 Agent / RAG / REST / WS 路由未注册（缺少依赖？）: %s", e)
 

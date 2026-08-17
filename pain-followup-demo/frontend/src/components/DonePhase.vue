@@ -1,7 +1,8 @@
+<!-- frontend/src/components/DonePhase.vue -->
 <template>
   <div class="glass-panel h-full flex flex-col" :class="activeTab === 'stats' ? 'overflow-y-auto' : 'overflow-hidden'">
     <div class="px-5 py-4 border-b border-gray-200 shrink-0">
-      <h2 class="text-lg font-bold text-gray-800">PainSmart 疼痛智能随访平台</h2>
+      <h2 class="text-lg font-bold text-gray-800">LANShing疼痛智能随访系统</h2>
       <p class="text-xs text-gray-400">医生管理后台{{ finalStats ? ' · 随访结果' : ' · 实时监控' }}</p>
     </div>
 
@@ -129,11 +130,14 @@
             <div class="text-xs text-gray-500 font-medium mb-2 mt-4">免随访患者 <span class="text-yellow-600">{{ filterResult.skip_count }} 人</span></div>
             <div class="space-y-1">
               <div
-                v-for="(p, i) in (filterResult.skip_details || [])"
+                v-for="(p, i) in skipPatients"
                 :key="i"
                 class="flex items-center justify-between py-1.5 px-3 rounded-lg bg-gray-50"
               >
-                <span class="text-xs text-gray-700">{{ p.name }}</span>
+                <div class="min-w-0">
+                  <div class="text-xs text-gray-700">{{ p.name }}</div>
+                  <div class="text-xs text-gray-400 truncate">· {{ p.diagnosis || '未填写诊断' }}</div>
+                </div>
                 <div class="flex items-center gap-2">
                   <span
                     v-if="p.matched_rule"
@@ -184,7 +188,9 @@
               :class="alert.risk_level === 'high' ? 'bg-red-500' : alert.risk_level === 'medium' ? 'bg-yellow-500' : alert.risk_level === 'callback' ? 'bg-orange-500' : 'bg-green-500'"
             ></span>
             <span class="text-xs text-gray-700 w-20 truncate">{{ alert.patient_name }}</span>
-            <span class="text-xs font-mono font-bold text-gray-800">{{ alert.risk_score }}分</span>
+            <span class="text-xs font-mono font-bold text-gray-800">
+              {{ alert.risk_level === 'callback' ? '无需评分' : `${alert.risk_score ?? '—'}分` }}
+            </span>
             <span
               class="text-xs px-1.5 py-0.5 rounded"
               :class="alert.risk_level === 'high' ? 'bg-red-50 text-red-700' : alert.risk_level === 'medium' ? 'bg-yellow-50 text-yellow-700' : alert.risk_level === 'callback' ? 'bg-orange-50 text-orange-700' : 'bg-green-50 text-green-700'"
@@ -248,7 +254,12 @@ const reversedLogs = computed(() => [...props.logs].slice(-50).reverse())
 const reversedAlerts = computed(() => [...props.alerts].reverse())
 
 const followupPatients = computed(() => {
+  if (props.filterResult?.send_list?.length) return props.filterResult.send_list
   return props.allPatients.filter(p => !p.skip_follow_up)
+})
+
+const skipPatients = computed(() => {
+  return props.filterResult?.skip_details || props.filterResult?.skip_list || []
 })
 
 // 去掉频次文本里的引用标记 [1][2]（仅展示用，不修改库里的原始频次）

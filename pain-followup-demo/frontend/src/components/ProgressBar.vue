@@ -1,3 +1,4 @@
+<!-- frontend/src/components/ProgressBar.vue -->
 <template>
   <div class="lan-progress" role="progressbar" :aria-valuenow="current" aria-valuemin="0" :aria-valuemax="total">
     <div class="flex items-center justify-between gap-3 text-xs text-gray-500 mb-2">

@@ -1,3 +1,4 @@
+# backend/routes/plan.py
 """
 随访计划 REST 路由（需求一 F1.1–F1.9）
 
@@ -18,15 +19,15 @@ from core.logging_config import get_logger
 
 log = get_logger("painsmart.plan")
 
-from agents.planner import generate_draft
-from db.followup_db import (
-    approve_plan, modify_plan, get_latest_plan, batch_approve_plans,
-    list_all_latest_plans,
-)
+from agents.planner_agent import generate_draft
+from infrastructure.repositories.followup_repository import PlanRepository
 from knowledge import config as kb_config
 from core.realtime import emit
 
 plan_router = APIRouter(tags=["plans"])
+
+# §12.2：计划审批/修改/列表统一经 PlanRepository（不再直连 db.followup_db）
+_plan_repo = PlanRepository()
 
 
 @plan_router.get("/api/guideline-file")
@@ -124,7 +125,7 @@ def api_approve_plan(plan_id: str, data: Optional[dict] = Body(None)):
     """F1.5 医生同意"""
     if data is None:
         data = {}
-    ok = approve_plan(plan_id, data.get("doctor_id"))
+    ok = _plan_repo.approve_plan(plan_id, data.get("doctor_id"))
     emit({"type": "plan:approved", "data": {"plan_id": plan_id, "doctor_id": data.get("doctor_id")}})
     return {"ok": ok, "plan_id": plan_id, "status": "approved"}
 
@@ -137,7 +138,7 @@ def api_modify_plan(plan_id: str, data: Optional[dict] = Body(None)):
     plan_json = data.get("plan_json")
     if plan_json is None:
         raise HTTPException(status_code=400, detail={"ok": False, "error": "缺少 plan_json"})
-    ok = modify_plan(plan_id, plan_json, data.get("doctor_id"))
+    ok = _plan_repo.modify_plan(plan_id, plan_json, data.get("doctor_id"))
     emit({"type": "plan:modified", "data": {"plan_id": plan_id, "doctor_id": data.get("doctor_id")}})
     return {"ok": ok, "plan_id": plan_id, "status": "modified"}
 
@@ -148,7 +149,7 @@ def api_batch_approve(data: Optional[dict] = Body(None)):
     if data is None:
         data = {}
     try:
-        result = batch_approve_plans(data.get("doctor_id"))
+        result = _plan_repo.batch_approve_plans(data.get("doctor_id"))
         try:
             emit({"type": "plan:batch_approved", "data": {"count": result["approved"]}})
         except Exception:
@@ -162,14 +163,14 @@ def api_batch_approve(data: Optional[dict] = Body(None)):
 @plan_router.get("/api/plans")
 def api_list_all_plans():
     """批量获取所有患者的最新随访计划（启动时前端 initial load 用）"""
-    plans = list_all_latest_plans()
+    plans = _plan_repo.list_all_latest_plans()
     return {"ok": True, "count": len(plans), "plans": plans}
 
 
 @plan_router.get("/api/plans/{patient_id}")
 def api_get_plan(patient_id: str):
     """取患者最新计划"""
-    plan = get_latest_plan(patient_id)
+    plan = _plan_repo.get_latest_plan(patient_id)
     if not plan:
         return {"ok": True, "plan": None}
     return {"ok": True, "plan": plan}

@@ -1,3 +1,4 @@
+# backend/services/doctor_review.py
 """
 医生人工审阅管线（纯业务流程，无 LLM / 非 Agent）
 
@@ -6,19 +7,38 @@
   - get_review_statistics：审阅统计（完成率/平均评分/需跟踪数）。
 
 （build_review_graph 为预留的 LangGraph 编排入口，当前未在生产路径使用。）
+
+§12.2：不再直连 db.followup_db，统一经 FollowupRepository（可选从 AppContext 获取）。
 """
 import json
+from typing import TypedDict
 from langgraph.graph import StateGraph, START, END
 
-from agents.state import AgentState
-from db.followup_db import (
-    get_session, create_review, list_reviews, review_stats, get_plan,
-)
+
+def _repo():
+    """取当前 AppContext 的 followup_repository；缺省构造独立实例（返回结构不变）。"""
+    from infrastructure.repositories.followup_repository import FollowupRepository
+    try:
+        from infrastructure.runtime_context import get_context
+        ctx = get_context()
+        if ctx is not None and getattr(ctx, "followup_repository", None) is not None:
+            return ctx.followup_repository
+    except Exception:
+        pass
+    return FollowupRepository()
 
 
-def _package(state: AgentState) -> dict:
+class _ReviewState(TypedDict, total=False):
+    """医生审阅预留图局部 State（Agent-centric 迁移后不再依赖万能 AgentState，P0#6）。"""
+    session_id: str
+    agent_summary: str
+    risk_result: dict
+    messages: list
+
+
+def _package(state: _ReviewState) -> dict:
     """package_session：从 DB 读取会话并打包摘要/原文/风险"""
-    session = get_session(state.get("session_id"))
+    session = _repo().get_session(state.get("session_id"))
     if not session:
         return {"error": f"未找到会话 {state.get('session_id')}"}
     transcript = session.get("transcript_json", [])
@@ -35,7 +55,7 @@ def _package(state: AgentState) -> dict:
     return {"agent_summary": summary, "risk_result": risk, "messages": [packaged]}
 
 
-def _notify(state: AgentState, emit=None) -> dict:
+def _notify(state: _ReviewState, emit=None) -> dict:
     """notify_review_queue：推送 review:session_ready（若有 emit 回调）"""
     if emit:
         emit("review:session_ready", {
@@ -48,7 +68,7 @@ def _notify(state: AgentState, emit=None) -> dict:
 
 
 def build_review_graph(emit=None):
-    g = StateGraph(AgentState)
+    g = StateGraph(_ReviewState)
     g.add_node("package_session", _package)
     g.add_node("notify_review_queue", lambda s: _notify(s, emit=emit))
     g.add_edge(START, "package_session")
@@ -62,15 +82,19 @@ def submit_review(session_id, doctor_score=None, doctor_comment=None,
     """
     医生提交审阅（需求二 F2.3/F2.4/F2.5）——对应 POST /api/reviews
     落库 followup_review，audit_snapshot 保存会话快照（留痕，风险 4）。
+
+    §10.1：同时推进审阅状态机 ai_review_ready → doctor_reviewed；
+    医生提交只写医生字段（doctor_review_json / reviewed_by），不覆盖 AI JSON。
     """
-    session = get_session(session_id)
+    repo = _repo()
+    session = repo.get_session(session_id)
     if not session:
         return {"error": f"未找到会话 {session_id}"}
     audit = {
         "session": session,
-        "plan": get_plan(session.get("plan_id")) if session.get("plan_id") else None,
+        "plan": repo.get_plan(session.get("plan_id")) if session.get("plan_id") else None,
     }
-    review_id = create_review(
+    review_id = repo.create_review(
         session_id=session_id,
         patient_id=session["patient_id"],
         doctor_score=doctor_score,
@@ -79,6 +103,19 @@ def submit_review(session_id, doctor_score=None, doctor_comment=None,
         reviewer_id=reviewer_id,
         audit_snapshot=audit,
     )
+    # §10.1：审阅状态机（同一 AppContext 下的 ReviewRepository 投影）
+    from infrastructure.runtime_context import get_context
+    record = get_context().review_repository.get_by_session(session_id)
+    if record:
+        get_context().review_repository.submit_doctor_review(
+            review_key=record["review_key"],
+            doctor_review_json={
+                "doctor_score": doctor_score,
+                "doctor_comment": doctor_comment,
+                "track_status": track_status,
+            },
+            reviewed_by=reviewer_id,
+        )
     return {
         "review_id": review_id,
         "session_id": session_id,
@@ -90,8 +127,21 @@ def submit_review(session_id, doctor_score=None, doctor_comment=None,
 
 
 def list_review_queue(status=None, patient_id=None):
-    return list_reviews(status=status, patient_id=patient_id)
+    return _repo().list_reviews(status=status, patient_id=patient_id)
 
 
-def get_review_statistics(today=None):
-    return review_stats(today=today)
+def get_review_statistics(today=None, dispatch_id=None):
+    return _repo().review_stats(today=today, dispatch_id=dispatch_id)
+
+
+# ---- §12.2：Review 面板只读数据经服务转发（不再直连 db.followup_db）----
+def get_session(session_id):
+    return _repo().get_session(session_id)
+
+
+def get_latest_transcripts():
+    return _repo().get_latest_transcripts()
+
+
+def get_latest_sessions(today=None, dispatch_id=None):
+    return _repo().get_latest_sessions(today=today, dispatch_id=dispatch_id)

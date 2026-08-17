@@ -1,3 +1,4 @@
+# backend/knowledge/api_routes.py
 """
 RAG 知识库 REST 路由（FastAPI APIRouter）
 注册到 app.py：app.include_router(knowledge_router)

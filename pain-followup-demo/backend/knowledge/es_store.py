@@ -1,3 +1,4 @@
+# backend/knowledge/es_store.py
 """
 Elasticsearch 向量库封装 — 混合检索（BM25 + 向量 kNN + RRF 融合）
 

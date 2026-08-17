@@ -1,3 +1,4 @@
+# backend/core/__init__.py
 """
 Core 模块 — 全局配置、日志、实时推送
 """

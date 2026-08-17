@@ -1,3 +1,4 @@
+# backend/knowledge/__init__.py
 """
 PainSmart RAG 知识库包
 对外暴露：

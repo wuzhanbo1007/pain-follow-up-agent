@@ -1,3 +1,4 @@
+# backend/routes/__init__.py
 """
 Routes 模块 — REST API 路由（FastAPI APIRouter）
 """
