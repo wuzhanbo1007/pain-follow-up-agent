@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 PainSmart 9.0 — MySQL 数据访问层（Faker + PolyFactory 生成假数据，存入远端 MySQL）
-替代原 SQLite 方案：init_db() 建 21 张表并用声明式工厂播种；PatientDB 提供运行时查询。
+替代原 SQLite 方案：init_db() 建全部声明式 ORM 表并用声明式工厂播种；PatientDB 提供运行时查询。
 
 依赖：sqlalchemy / polyfactory / faker / pymysql / python-dotenv
 远端库配置见 data/db_config.py（backend/.env）。
@@ -46,9 +46,19 @@ def _get_engine():
 # 数据库初始化 + 播种
 # ======================================================================
 def init_db(force=False):
-    """建 21 张表（幂等）；表为空时（或 force=True）用 Faker+PolyFactory 播种。"""
+    """初始化运行时数据库。
+
+    远程 MySQL 的表结构由迁移/播种流程维护。运行时默认不执行
+    ``Base.metadata.create_all``，避免应用每次启动都对整套表申请 metadata
+    lock。首次建库或明确需要补表时，设置 ``DB_AUTO_CREATE_TABLES=1``，或
+    显式调用 ``init_db(force=True)``。
+    """
     engine, SessionLocal = _get_engine()
-    Base.metadata.create_all(engine)
+    auto_create = os.getenv("DB_AUTO_CREATE_TABLES", "0").strip().lower() in {
+        "1", "true", "yes", "on",
+    }
+    if force or auto_create:
+        Base.metadata.create_all(engine)
 
     with SessionLocal() as s:
         cnt = s.scalar(select(func.count()).select_from(Patient))
@@ -80,6 +90,10 @@ def _patient_to_dict(pat, session):
         "skip_reason": pat.skip_reason,
         "daily_status": pat.daily_status,
         "consecutive_no_reply_days": pat.consecutive_no_reply_days,
+        "emotion_consent": bool(
+            (pat.consent_flags or {}).get("emotion_consent", True)
+            if isinstance(pat.consent_flags, dict) else True
+        ),
     }
     dis = session.scalar(
         select(DischargeRecord)
