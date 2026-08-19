@@ -27,6 +27,7 @@ from infrastructure.runtime_context import AppContext, get_context
 from domain.models.followup import DispatchRoster
 from domain.models.callback_policy import CallbackPolicy
 from domain.services.roster_decider import RosterDecider
+from domain.services.patient_address import build_patient_address
 from core.logging_config import get_logger
 
 _logger = get_logger("painsmart.dispatcher")
@@ -209,12 +210,14 @@ async def create_episodes_node(state: DispatchState,
     for p in send_roster:
         pid = p.get("patient_id")
         episode_id = f"episode:{dispatch_id}:{pid}"
-        # 连续未回复达到 YAML 配置阈值的患者也要记录“本轮已触达”。
-        # 但她不会进入微信/模拟对话 Episode，终态直接转人工电话回访。
+        # 连续未回复达到阈值的患者也进入同一 Episode 队列，由 EpisodeService
+        # 与其他患者共享并发上限；其内部不模拟患者回复，记录两轮未回复后转电话回访。
         if p.get("phone_callback"):
             no_reply_days = int(p.get("consecutive_no_reply_days") or 0)
-            reason = f"连续{no_reply_days}天未回复本次随访消息，需电话回访"
             patient_name = p.get("name") or f"患者{pid}"
+            patient_address = build_patient_address(
+                p.get("name", ""), p.get("age"), p.get("gender", ""),
+            )
             await ctx.episode_repository.create(
                 episode_id=episode_id, dispatch_id=dispatch_id,
                 patient_id=str(pid), status="pending",
@@ -228,39 +231,16 @@ async def create_episodes_node(state: DispatchState,
                     "callback_policy_version": state.get("callback_policy_version"),
                     "conversation_policy_version": state.get("conversation_policy_version"),
                     "phone_callback": True,
+                    "no_reply_days": no_reply_days,
+                    "no_reply_rounds": 2,
+                    "patient_name": patient_name,
+                    "patient_address": patient_address,
                 },
             )
-            from agents.patient_followup_agent import run_no_reply_episode
-            await run_no_reply_episode(
-                episode_id=episode_id, dispatch_id=dispatch_id,
-                patient_id=str(pid), patient_name=patient_name,
-                message_content=(
-                    f"{patient_name}您好，系统已发送本次疼痛随访提醒。"
-                    f"因您已连续{no_reply_days}天未回复，已为您安排人工电话回访，"
-                    "请保持电话畅通。"
-                ),
-                no_reply_days=no_reply_days, business_date=business_date,
-                callback_policy_version=state.get("callback_policy_version"),
-                conversation_policy_version=state.get("conversation_policy_version"),
-                input_source=p.get("input_source", "simulator"),
-                channel=p.get("channel", "phone"), context=ctx,
-            )
-            ctx.event_outbox.turn_decision(
-                dispatch_id=dispatch_id, episode_id=episode_id,
-                patient_id=str(pid), patient_name=patient_name,
-                turn_no=1, input_source=p.get("input_source", "simulator"),
-                decision={
-                    "action": "incomplete_handoff",
-                    "reason": reason,
-                    "missing_slots": [],
-                },
-                coverage={"missing": []},
-            )
-            ctx.event_outbox.callback_alert(
-                dispatch_id=dispatch_id, episode_id=episode_id,
-                patient_id=str(pid), patient_name=patient_name,
-                no_reply_days=no_reply_days, reason=reason,
-                alert_key=f"callback-alert:{episode_id}",
+            episode_ids.append(episode_id)
+            ctx.event_outbox.enqueue(
+                event_type="episode.start_requested", aggregate_id=episode_id,
+                payload={"episode_id": episode_id, "dispatch_id": dispatch_id},
             )
             continue
         # 幂等创建 Episode 投影（payload 与旧 Send 负载一致，EpisodeService.start 直接运行）
@@ -350,7 +330,7 @@ async def run_dispatch(*, scope: str = "ward-A",
         {"dispatch_id": dispatch_id, "scope": scope,
          "callback_policy_version": callback_policy_version,
          "business_date": bd.isoformat(),  # §5.2：调度入口解析一次，图内各节点复用冻结值
-         "max_concurrency": 8},
+         "max_concurrency": 4},
         config=thread_config(dispatch_id),
         context=context,
     )

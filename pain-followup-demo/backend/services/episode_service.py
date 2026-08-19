@@ -13,7 +13,9 @@ from __future__ import annotations
 
 from infrastructure.langgraph import thread_config
 from infrastructure.runtime_context import AppContext, get_context
-from agents.patient_followup_agent import patient_followup_workflow, resume_patient_episode
+from agents.patient_followup_agent import (
+    patient_followup_workflow, resume_patient_episode, run_no_reply_episode,
+)
 
 
 class EpisodeService:
@@ -37,8 +39,31 @@ class EpisodeService:
         payload.setdefault("messages", [])
         config = thread_config(episode_id)
         try:
-            result = await patient_followup_workflow.ainvoke(
-                payload, context=self._context, config=config)
+            if payload.get("phone_callback"):
+                patient_name = payload.get("patient_name") or f"患者{payload.get('patient_id', '')}"
+                patient_address = payload.get("patient_address") or patient_name
+                no_reply_days = int(payload.get("no_reply_days") or 0)
+                result = await run_no_reply_episode(
+                    episode_id=episode_id,
+                    dispatch_id=payload.get("dispatch_id", ""),
+                    patient_id=str(payload.get("patient_id", "")),
+                    patient_name=patient_name,
+                    message_content=(
+                        f"{patient_address}您好，系统正在进行本次疼痛随访。"
+                        "请您方便时回复当前身体恢复情况。"
+                    ),
+                    no_reply_days=no_reply_days,
+                    no_reply_rounds=int(payload.get("no_reply_rounds") or 2),
+                    business_date=payload.get("business_date", ""),
+                    callback_policy_version=payload.get("callback_policy_version"),
+                    conversation_policy_version=payload.get("conversation_policy_version"),
+                    input_source=payload.get("input_source", "simulator"),
+                    channel=payload.get("channel", "phone"),
+                    context=self._context,
+                )
+            else:
+                result = await patient_followup_workflow.ainvoke(
+                    payload, context=self._context, config=config)
         except Exception as exc:
             await self._context.episode_repository.mark_failed(episode_id, exc)
             raise

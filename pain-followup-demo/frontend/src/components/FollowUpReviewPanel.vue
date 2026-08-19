@@ -134,6 +134,17 @@
               </span>
             </div>
             <div v-if="sessionDetail.ai_review.summary" class="text-sm text-purple-800 leading-relaxed mb-2">{{ sessionDetail.ai_review.summary }}</div>
+            <div
+              v-if="sessionDetail.ai_review.emotion_summary"
+              class="mb-2 rounded-xl border px-3 py-2 text-sm"
+              :class="emotionReviewClass(sessionDetail.ai_review.emotion_state)"
+            >
+              <div class="flex items-center justify-between gap-2 mb-1">
+                <span class="font-medium">患者情绪：{{ emotionReviewLabel(sessionDetail.ai_review.emotion_state) }}</span>
+                <span v-if="sessionDetail.ai_review.emotion_focus_required" class="text-xs font-semibold">需重点关注</span>
+              </div>
+              <div class="leading-relaxed">{{ sessionDetail.ai_review.emotion_summary }}</div>
+            </div>
             <div v-if="sessionDetail.ai_review.risk_flags && sessionDetail.ai_review.risk_flags.length" class="flex flex-wrap gap-2 mb-2">
               <span v-for="(f, i) in sessionDetail.ai_review.risk_flags" :key="i"
                 class="text-xs px-2 py-0.5 rounded bg-red-50 text-red-600 border border-red-200">{{ flagText(f) }}</span>
@@ -282,6 +293,24 @@ function suggestionText(s) {
     return `${p}${s.content || ''}`
   }
   return String(s == null ? '' : s)
+}
+function emotionReviewLabel(state) {
+  return {
+    positive: '积极',
+    stable: '平稳',
+    low: '偏低落/焦虑',
+    distressed: '明显痛苦或激动',
+    urgent: '紧急风险',
+    unknown: '暂未明确',
+  }[state] || '暂未明确'
+}
+function emotionReviewClass(state) {
+  if (state === 'urgent') return 'bg-red-50 border-red-300 text-red-800'
+  if (state === 'distressed') return 'bg-orange-50 border-orange-300 text-orange-800'
+  if (state === 'low') return 'bg-amber-50 border-amber-300 text-amber-800'
+  if (state === 'positive') return 'bg-green-50 border-green-300 text-green-800'
+  if (state === 'stable') return 'bg-blue-50 border-blue-300 text-blue-800'
+  return 'bg-gray-50 border-gray-200 text-gray-700'
 }
 // completion_score 可能是 int（规则兜底），也可能是 {total, breakdown}（LLM），统一取总分
 function reviewScore(v) {

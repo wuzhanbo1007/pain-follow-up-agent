@@ -20,10 +20,14 @@ import asyncio
 import time
 from typing import Any, AsyncGenerator, Optional
 
-from core.config import LLM_API_KEY, LLM_BASE_URL, LLM_MODEL, LLM_TIMEOUT
+from core.config import (
+    LLM_API_KEY, LLM_BASE_URL, LLM_MODEL, LLM_MAX_RETRIES, LLM_TIMEOUT,
+)
 
 # ---- 连接级重试（参照 Comet client._post_with_retry）----
-_MAX_RETRIES = 3
+# LLM_MAX_RETRIES 表示首次调用失败后的“额外重试次数”。例如配置为 1 时，
+# 最多调用两次（首次 + 重试一次），而不是把一次尝试误当成一次重试。
+_MAX_ATTEMPTS = 1 + max(0, LLM_MAX_RETRIES)
 _RETRY_BACKOFF = 1.5  # 秒，第 n 次重试等待 _RETRY_BACKOFF * n
 _RETRY_STATUS = {429, 500, 502, 503, 504}
 
@@ -185,7 +189,7 @@ async def achat_completion(messages: list[dict], *, temperature: float = 0.7,
     )
 
     last_exc: Optional[Exception] = None
-    for attempt in range(_MAX_RETRIES):
+    for attempt in range(_MAX_ATTEMPTS):
         try:
             content = await _ainvoke(
                 model, messages, use_format=use_format,
@@ -206,7 +210,7 @@ async def achat_completion(messages: list[dict], *, temperature: float = 0.7,
                 continue
             if not _is_retryable(exc):
                 raise
-            if attempt < _MAX_RETRIES - 1:
+            if attempt < _MAX_ATTEMPTS - 1:
                 await asyncio.sleep(_RETRY_BACKOFF * (attempt + 1))
     assert last_exc is not None
     raise last_exc

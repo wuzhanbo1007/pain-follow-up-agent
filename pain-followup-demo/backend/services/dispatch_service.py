@@ -58,9 +58,16 @@ class DispatchService:
         # 消费启动事件（事件驱动路径，§5）；兜底用图返回的 episode_ids
         events = self.context.event_outbox.drain(event_type="episode.start_requested")
         episode_ids = [e["aggregate_id"] for e in events] or result.get("episode_ids") or []
-        # 独立 Episode，每个独立 thread_id；gather 等待全部落定（interrupt 即时返回）
+        # 所有 Episode（含电话回访）共用同一并发池，防止 LLM 请求把服务端挤满。
         svc = EpisodeService(self.context)
-        tasks = [asyncio.create_task(svc.start(eid)) for eid in episode_ids]
+        max_concurrency = max(1, int(result.get("max_concurrency") or 4))
+        semaphore = asyncio.Semaphore(max_concurrency)
+
+        async def start_limited(eid: str):
+            async with semaphore:
+                return await svc.start(eid)
+
+        tasks = [asyncio.create_task(start_limited(eid)) for eid in episode_ids]
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
         await svc.refresh_dispatch_status(dispatch_id)

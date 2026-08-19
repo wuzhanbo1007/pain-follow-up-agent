@@ -13,12 +13,14 @@ from pydantic import BaseModel, Field
 
 # 模糊类型（说明书 8.5：compose_question_prompt 依据此选择语气）
 AmbiguityType = Literal["none", "vague", "deflect", "emotional", "irrelevant", "minimal"]
+EmotionState = Literal["positive", "stable", "low", "distressed", "urgent", "unknown"]
+EmotionIntensity = Literal["low", "medium", "high"]
 
 
 class ReplyUnderstanding(BaseModel):
     """一次患者回复的结构化理解。"""
     # 四项关键槽位
-    pain_nrs: int | None = Field(default=None, ge=0, le=10)
+    pain_nrs: float | None = Field(default=None, ge=0, le=10)
     sleep_quality: str | None = None
     medication_taken: bool | None = None
     side_effects: str | None = None
@@ -31,6 +33,11 @@ class ReplyUnderstanding(BaseModel):
     # 患者意图
     patient_requested_stop: bool = False
     requires_immediate_action: bool = False
+
+    # 当前这一条患者消息的情绪，不做跨天趋势计算
+    emotion_state: EmotionState = "unknown"
+    emotion_intensity: EmotionIntensity = "low"
+    emotion_evidence: str = ""
 
     # 模糊类型，驱动追问语气
     ambiguity_type: AmbiguityType = "none"

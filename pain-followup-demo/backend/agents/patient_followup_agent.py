@@ -509,6 +509,7 @@ async def run_patient_episode(*, episode_id: str, dispatch_id: str,
 async def run_no_reply_episode(*, episode_id: str, dispatch_id: str,
                                patient_id: str, patient_name: str,
                                message_content: str, no_reply_days: int,
+                               no_reply_rounds: int = 2,
                                business_date: str = "",
                                callback_policy_version: str | None = None,
                                conversation_policy_version: str | None = None,
@@ -517,22 +518,33 @@ async def run_no_reply_episode(*, episode_id: str, dispatch_id: str,
                                context=None) -> dict:
     """Complete a no-reply follow-up after sending one reminder.
 
-    A phone-callback patient has no ordinary conversation loop, but still needs
-    a terminal episode, session transcript, AI review, and report so dispatch
-    aggregation and the review screen treat it like every other patient.
+    A phone-callback patient has no ordinary conversation loop. It records two
+    unanswered outreach rounds without creating simulated patient messages,
+    then continues to the same review and report stages as other patients.
     """
     if context is None:
         from infrastructure.runtime_context import get_context
         context = get_context()
     ctx = context
+    rounds = max(1, int(no_reply_rounds or 2))
     message_key = f"message:{episode_id}:phone_callback:1"
-    message = {
+    messages = [{
         "role": "nurse",
         "content": message_content,
         "turn_no": 1,
         "message_key": message_key,
-    }
-    reason = f"连续{no_reply_days}天未回复本次随访消息，需电话回访"
+    }]
+    if rounds >= 2:
+        messages.append({
+            "role": "nurse",
+            "content": (
+                "暂未收到您的回复。本轮第二次随访仍未获得回应，"
+                "系统将安排人工电话回访，请保持电话畅通。"
+            ),
+            "turn_no": 2,
+            "message_key": f"message:{episode_id}:phone_callback:2",
+        })
+    reason = f"连续{no_reply_days}天未回复，且本轮连续{rounds}次未回应，需电话回访"
     risk = {
         "level": "unknown",
         "score": None,
@@ -550,19 +562,20 @@ async def run_no_reply_episode(*, episode_id: str, dispatch_id: str,
         patient_id=str(patient_id), status="running",
         input_source=input_source, channel=channel,
     )
-    ctx.message_outbox.enqueue(
-        episode_id=episode_id, dispatch_id=dispatch_id,
-        patient_id=str(patient_id), patient_name=patient_name,
-        role="nurse", content=message_content, turn_no=1,
-        message_key=message_key,
-    )
+    for message in messages:
+        ctx.message_outbox.enqueue(
+            episode_id=episode_id, dispatch_id=dispatch_id,
+            patient_id=str(patient_id), patient_name=patient_name,
+            role="nurse", content=message["content"], turn_no=message["turn_no"],
+            message_key=message["message_key"],
+        )
 
     summary = (
         f"已发送本次随访提醒；患者已连续{no_reply_days}天未回复，"
-        "本次不等待患者回复，已转电话回访。"
+        f"系统已按连续{rounds}轮未回复处理，已转电话回访。"
     )
     session_id = ctx.followup_repository.create_session(
-        patient_id=str(patient_id), transcript_json=[message],
+        patient_id=str(patient_id), transcript_json=messages,
         risk_result=risk, agent_summary=summary,
         session_key=f"session:{episode_id}",
     )
@@ -580,7 +593,7 @@ async def run_no_reply_episode(*, episode_id: str, dispatch_id: str,
         dispatch_id=dispatch_id, episode_id=episode_id,
         patient_id=str(patient_id), session_id=session_id,
         risk_result=risk, agent_summary=summary,
-        transcripts=[message], plan=plan, history={"history": history},
+        transcripts=messages, plan=plan, history={"history": history},
     )
     report = PatientReport(
         episode_id=episode_id, patient_id=str(patient_id), name=patient_name,
@@ -606,6 +619,7 @@ async def run_no_reply_episode(*, episode_id: str, dispatch_id: str,
             },
             "slots": {},
             "no_reply": True,
+            "no_reply_rounds": rounds,
         },
         started_at=business_date, finished_at=business_date,
     )
@@ -623,6 +637,23 @@ async def run_no_reply_episode(*, episode_id: str, dispatch_id: str,
         dispatch_id=dispatch_id, episode_id=episode_id,
         patient_id=str(patient_id), status="completed",
         risk_result=risk, report=report_dict,
+    )
+    ctx.event_outbox.turn_decision(
+        dispatch_id=dispatch_id, episode_id=episode_id,
+        patient_id=str(patient_id), patient_name=patient_name,
+        turn_no=rounds, input_source=input_source,
+        decision={
+            "action": "incomplete_handoff",
+            "reason": reason,
+            "missing_slots": [],
+        },
+        coverage={"missing": []},
+    )
+    ctx.event_outbox.callback_alert(
+        dispatch_id=dispatch_id, episode_id=episode_id,
+        patient_id=str(patient_id), patient_name=patient_name,
+        no_reply_days=no_reply_days, reason=reason,
+        alert_key=f"callback-alert:{episode_id}",
     )
     return report_dict
 

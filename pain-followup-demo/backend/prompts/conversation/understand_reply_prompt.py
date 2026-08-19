@@ -2,7 +2,7 @@
 """understand_reply_prompt —— 患者回复理解提示词（说明书 8.5 表）。
 
 唯一对应 ReplyUnderstandingAgent / understand_reply_node。
-输出 ReplyUnderstanding：疼痛/睡眠/用药/副作用/停止意图/模糊类型/置信度/原文证据。
+输出 ReplyUnderstanding：疼痛/睡眠/用药/副作用/当前情绪/停止意图/模糊类型/置信度/原文证据。
 LLM 只做理解；是否继续由确定性 TurnRouter 决定。
 
 内容复用原 prompts/reply_parsing.py 的语义推理框架（行为不变），
@@ -35,7 +35,7 @@ def build_prompt(ctx: UnderstandContext) -> PromptSpec:
   提取字段与语义推理规则
 ══════════════════════════════════
 
-1. pain_nrs（疼痛评分, 整数 0–10 或 null）
+1. pain_nrs（疼痛评分, 0–10 的数字，可带1位小数，如7.5，或 null）
    0=不痛/消除；1-3=轻微/偶尔/隐隐；4-6=中度持续但不剧烈；7-9=重度/剧烈/严重影响；10=无法忍受。
    患者直接说数字→直接用；“疼得厉害/剧烈疼痛/疼痛难忍/无法忍受”等明确重度描述→填写 8-10 分，无法进一步区分时填写 8 分；
    说“好多了/减轻”但无数字→必须为 null，不能读取或推断历史分数；
@@ -59,13 +59,21 @@ def build_prompt(ctx: UnderstandContext) -> PromptSpec:
 
 5. patient_requested_stop（bool）患者明确表示不想继续/想结束/不想聊了→true。
 6. requires_immediate_action（bool）患者表达绝望/极端痛苦/有自杀意念/突发剧痛需立即处理→true。
-7. ambiguity_type（none/vague/deflect/emotional/irrelevant/minimal）
+7. emotion_state（只能从 positive/stable/low/distressed/urgent/unknown 中选择）
+   positive=明确表达心情不错、恢复有信心、状态变好；
+   stable=情绪平稳、一般、没有明显情绪困扰；
+   low=低落、难过、焦虑、无助，但没有明确自伤/轻生表达；患者回答整体感受时说“感觉一般”“状态一般”“感觉不是很好”也属于轻度 low。仅“睡得一般”“疼痛一般”“用药一般”等具体临床指标不能据此判断情绪；
+   distressed=明显痛苦、崩溃、绝望或强烈恐惧，但尚未明确表达自伤/轻生；
+   urgent=我不想活了、想自杀、想轻生、想伤害自己等明确危险表达；
+   unknown=当前回复没有足够情绪证据。不能仅凭疼痛分数推断情绪。
+8. emotion_intensity（low/medium/high）和 emotion_evidence（当前原文中的情绪依据，没有则为空字符串）。
+9. ambiguity_type（none/vague/deflect/emotional/irrelevant/minimal）
    none=明确；vague=模糊笼统；deflect=回避/转移话题；emotional=情绪化宣泄；irrelevant=答非所问；minimal=极简(表情/一两个字)。
 
 ══════════════════════════════════
   全局规则
 ══════════════════════════════════
-A. 语义推理>关键词匹配，但每个槽位都必须有自己的原文证据；一个表达不能无依据地填充多个槽位。
+A. 语义推理>关键词匹配，但每个槽位都必须有自己的原文证据；一个表达不能无依据地填充多个槽位。患者已明确说出疼痛评分（包括小数）时，直接记录该评分，不要要求患者为了区分当前疼痛和近期平均疼痛而重复回答。
 B. 宁可null+低置信，不瞎猜数字；护士问题是解释极短回复的上下文，不是患者数据来源。
 C. 历史优先：仅在患者明确说"老样子/没变化"时继承相关已知槽位。
 D. 否定优先：先判否定句再提取正向。E. 答非所问/纯表情→全null+minimal。
@@ -80,7 +88,7 @@ F. 严格JSON，不要额外文字。
 
 请输出严格 JSON（不要 markdown 包裹、不要注释、不要尾逗号）：
 {{
-  "pain_nrs": <int 0-10 或 null>,
+  "pain_nrs": <number 0-10（可带1位小数）或 null>,
   "sleep_quality": <"好"|"一般"|"差"|"很差"|null>,
   "medication_taken": <true|false|"partial"|null>,
   "side_effects": <"无"|具体症状|null>,
@@ -89,6 +97,9 @@ F. 严格JSON，不要额外文字。
   "evidence": {{<slot: 原文片段，仅命中的>}},
   "patient_requested_stop": <bool>,
   "requires_immediate_action": <bool>,
+  "emotion_state": <positive|stable|low|distressed|urgent|unknown>,
+  "emotion_intensity": <low|medium|high>,
+  "emotion_evidence": "<当前原文证据>",
   "ambiguity_type": <none|vague|deflect|emotional|irrelevant|minimal>,
   "parse_notes": "<一句话解析关键判断>"
 }}"""

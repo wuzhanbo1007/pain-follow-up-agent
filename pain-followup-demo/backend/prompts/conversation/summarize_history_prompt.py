@@ -27,12 +27,12 @@ def build_prompt(ctx: HistorySummaryContext) -> PromptSpec:
         lines.append(f"{role}：{m.get('content', '')}")
     dialogue = "\n".join(lines) if lines else "（无）"
     system = """你是随访对话摘要助手。请把一段更早的医患微信对话与已有摘要合并，
-压成一段简洁的『前情提要』，供护士在后续长对话中不丢失早期关键信息。
+压成一段完整但简洁的『前情提要』，供护士在后续长对话中不丢失早期关键信息。
 
 要求：
 1. 保留关键信息：疼痛程度/趋势、睡眠、用药、副作用、风险信号、患者情绪、重要事件（复诊/住院/请假等）。
-2. 必须融合已有摘要，不能遗漏其中的关键点。
-3. 输出一段连续中文文本，200字以内，不要分条列点，不要出现『摘要』二字。"""
+2. 必须融合已有摘要，不能遗漏其中的关键点；保留已经确认的NRS数值、睡眠、用药和副作用结论，不要把患者对某个问题的回答改写成总体状态。
+3. 输出一段连续中文文本，400字以内，不要分条列点，不要出现『摘要』二字。"""
     user = f"""已有摘要：{old}
 
 本批新对话：
@@ -40,4 +40,4 @@ def build_prompt(ctx: HistorySummaryContext) -> PromptSpec:
 
 请输出合并后的摘要："""
     return PromptSpec(system=system, user=user, temperature=0.3,
-                      max_tokens=400, prompt_version=PROMPT_VERSION)
+                      max_tokens=500, prompt_version=PROMPT_VERSION)

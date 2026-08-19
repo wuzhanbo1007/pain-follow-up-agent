@@ -31,6 +31,12 @@ from knowledge.retriever import warm_store
 # ======== 创建 FastAPI 应用 ========
 app = FastAPI(title="LANShing慢性疼痛随访智能体", version="9.0")
 
+
+@app.get("/health")
+async def health_check():
+    """基础健康检查，供启动探针和局域网反向代理使用。"""
+    return {"status": "ok"}
+
 # CORS 中间件
 app.add_middleware(
     CORSMiddleware,

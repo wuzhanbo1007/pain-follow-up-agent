@@ -15,10 +15,8 @@ from __future__ import annotations
 import json
 from typing import Any, Optional, TypeVar
 
-from core.logging_config import get_logger
 from prompts.prompt_spec import PromptSpec
 
-log = get_logger("painsmart.llm_gateway")
 
 T = TypeVar("T")
 
@@ -51,7 +49,10 @@ PROFILES: dict[str, LLMProfile] = {
     ),
     # AIReviewAgent 开启 Qwen 思考模式，用于审阅和风险判断。
     "ai_review": LLMProfile(
-        temperature=0.2, response_format={"type": "json_object"}, thinking=True,
+        # 思考内容与最终 JSON 共用输出额度；8000 可避免过小额度导致 JSON 尚未
+        # 输出就被截断，同时限制无限制思考带来的长时间等待。
+        temperature=0.2, max_tokens=8000,
+        response_format={"type": "json_object"}, thinking=False,
     ),
     "policy_compiler": LLMProfile(
         temperature=0.0, response_format={"type": "json_object"}, thinking=False,
@@ -109,9 +110,11 @@ class LLMGateway:
                 max_tokens=p.max_tokens,
                 extra_body={"chat_template_kwargs": p.chat_template_kwargs},
             )
-            return parse_json_safe(raw)
+            if not raw or not str(raw).strip():
+                return {}
+            parsed = parse_json_safe(raw)
+            return parsed
         except Exception as exc:
-            log.warning("chat_json 失败（profile=%s）: %s", profile, exc)
             return {}
 
     async def invoke_structured(self, prompt: PromptSpec,

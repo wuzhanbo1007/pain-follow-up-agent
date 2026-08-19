@@ -16,7 +16,7 @@
           : 'bg-gray-200 text-gray-400 cursor-not-allowed'"
       >
         <LanIcon name="play" />
-        {{ canStart ? '开始今日随访' : isRunning ? '执行中...' : '等待重置' }}
+        {{ !wsConnected ? '等待 WebSocket 连接' : canStart ? '开始今日随访' : isRunning ? '执行中...' : '等待重置' }}
       </button>
 
       <!-- 重置按钮 -->
@@ -40,11 +40,12 @@ const props = defineProps({
   onReset: { type: Function, default: () => {} },
   agentState: { type: Object, default: () => ({}) },
   isRunning: { type: Boolean, default: false },
+  wsConnected: { type: Boolean, default: false },
   inner: { type: Boolean, default: false },
 })
 
 defineEmits(['startFollowup', 'reset'])
 
 // 调度未在运行时允许启动（agentState 已从旧 IDLE 状态机改为调度状态）
-const canStart = computed(() => !props.isRunning)
+const canStart = computed(() => !props.isRunning && props.wsConnected)
 </script>

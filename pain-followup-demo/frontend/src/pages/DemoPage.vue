@@ -114,6 +114,7 @@
             <ControlPanel
               :agent-state="store.agentState"
               :is-running="isRunning"
+              :ws-connected="wsConnected"
               @start-followup="handleStartFollowup"
               @reset="handleReset"
             />

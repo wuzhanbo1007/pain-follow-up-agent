@@ -8,11 +8,21 @@ from __future__ import annotations
 
 import re
 
-from core.logging_config import get_logger
 from domain.models.reply_understanding import ReplyUnderstanding
 from prompts.conversation.understand_reply_prompt import build_prompt, UnderstandContext
 
-log = get_logger("painsmart.agent.understand")
+
+_NRS_NUMBER = r"(?:10(?:\.0+)?|[0-9](?:\.[0-9]+)?)"
+
+def _normalize_nrs_value(value):
+    """把LLM/关键词解析出的NRS规范为0-10范围内、最多1位小数。"""
+    try:
+        score = round(float(value), 1)
+    except (TypeError, ValueError):
+        return None
+    if not 0 <= score <= 10:
+        return None
+    return score
 
 
 class ReplyUnderstandingAgent:
@@ -42,9 +52,9 @@ class ReplyUnderstandingAgent:
         if not data:
             return self._fallback(reply_text, current_question=current_question)
         try:
-            return self._normalize(data, reply_text, current_question=current_question)
+            result = self._normalize(data, reply_text, current_question=current_question)
+            return result
         except Exception as exc:
-            log.warning("回复理解归一化失败，回退规则: %s", exc)
             return self._fallback(reply_text, current_question=current_question)
 
     @staticmethod
@@ -54,15 +64,8 @@ class ReplyUnderstandingAgent:
         # 只补 None，不覆盖 LLM 已确认的值。
         fallback = _keyword_parse(raw, current_question=current_question)
 
-        # pain_nrs 0-10
-        nrs = data.get("pain_nrs")
-        if nrs is not None:
-            try:
-                nrs = int(nrs)
-                if not (0 <= nrs <= 10):
-                    nrs = None
-            except (TypeError, ValueError):
-                nrs = None
+        # pain_nrs 0-10，允许1位小数（如7.5）
+        nrs = _normalize_nrs_value(data.get("pain_nrs"))
         # 数字评分优先；没有数字时，明确的重度疼痛描述必须落入 NRS 8–10，
         # 防止 LLM 将“疼得厉害”误归为低分。
         qualitative_nrs = ReplyUnderstandingAgent._qualitative_pain_score(raw)
@@ -71,7 +74,12 @@ class ReplyUnderstandingAgent:
         if nrs is None:
             nrs = fallback.get("pain_nrs")
 
-        sleep_quality = data.get("sleep_quality")
+        explicit_sleep_quality = _sleep_quality_from_hours(raw)
+        sleep_quality = (
+            explicit_sleep_quality
+            if explicit_sleep_quality is not None
+            else data.get("sleep_quality")
+        )
         if sleep_quality is None:
             sleep_quality = fallback.get("sleep_quality")
 
@@ -90,12 +98,22 @@ class ReplyUnderstandingAgent:
         side_effects = data.get("side_effects")
         if side_effects is None:
             side_effects = fallback.get("side_effects")
-
         conf = data.get("confidence")
         try:
             conf = float(conf) if conf is not None else 1.0
         except (TypeError, ValueError):
             conf = 1.0
+        emotion = _detect_emotion(raw)
+        llm_emotion = data.get("emotion_state")
+        allowed_emotions = {"positive", "stable", "low", "distressed", "urgent", "unknown"}
+        if llm_emotion not in allowed_emotions:
+            llm_emotion = "unknown"
+        # 明确的原文规则优先于模型自由发挥；尤其是紧急表达不能漏判。
+        emotion_state = emotion["state"] if emotion["state"] != "unknown" else llm_emotion
+        intensity = emotion["intensity"] if emotion["state"] != "unknown" else data.get("emotion_intensity", "low")
+        if intensity not in {"low", "medium", "high"}:
+            intensity = "low"
+        emotion_evidence = emotion["evidence"] or str(data.get("emotion_evidence") or "")
         return ReplyUnderstanding(
             pain_nrs=nrs,
             sleep_quality=sleep_quality,
@@ -105,7 +123,13 @@ class ReplyUnderstandingAgent:
             uncertain=bool(data.get("uncertain", conf < 0.6)),
             evidence=data.get("evidence") or {},
             patient_requested_stop=bool(data.get("patient_requested_stop")),
-            requires_immediate_action=bool(data.get("requires_immediate_action")),
+            requires_immediate_action=(
+                bool(data.get("requires_immediate_action"))
+                or emotion_state == "urgent"
+            ),
+            emotion_state=emotion_state,
+            emotion_intensity=intensity,
+            emotion_evidence=emotion_evidence,
             ambiguity_type=data.get("ambiguity_type", "none"),
             raw_text=raw,
         )
@@ -113,20 +137,23 @@ class ReplyUnderstandingAgent:
     @staticmethod
     def _has_explicit_pain_score(text: str, current_question: str = "") -> bool:
         text = (text or "").strip()
-        if re.match(r"^(?:10|[0-9])\s*(?:分|/\s*10)?(?:[。.!！？?，,])?\s*$", text):
+        if re.match(
+            rf"^\s*{_NRS_NUMBER}\s*(?:分|/\s*10)?(?:[。.!！？?，,])?\s*$",
+            text,
+        ):
             return ReplyUnderstandingAgent._is_pain_question(current_question)
-        # “大概5分”“差不多5分”“5分左右”仍然是患者明确给出的评分，
+        # “大概7.5分”“差不多5分”“5分左右”仍然是患者明确给出的评分，
         # 不能因为带了口语限定词而丢弃。
-        if re.search(r"(?<![\d.\-])(?:10|[0-9])\s*分", text):
+        if re.search(rf"(?<![\d.\-]){_NRS_NUMBER}\s*分(?![\d.])", text):
             return True
         return bool(re.search(
             r"(?:疼痛|腰疼|腰痛|痛感|疼痛评分|疼痛打分|打分|几分)[^0-9]{0,10}"
-            r"(?:10|[0-9])\s*(?:分|/\s*10)?",
+            rf"{_NRS_NUMBER}\s*(?:分|/\s*10)?(?![\d.])",
             text,
         ))
 
     @staticmethod
-    def _qualitative_pain_score(text: str) -> int | None:
+    def _qualitative_pain_score(text: str) -> float | None:
         """将明确的重度疼痛描述映射到 NRS 下限，避免漏掉高风险患者。"""
         text = (text or "").strip()
         if any(w in text for w in ("不疼", "不太疼", "没那么疼", "疼痛不重")):
@@ -184,12 +211,13 @@ class ReplyUnderstandingAgent:
         evidence = {k: raw for k in ("pain_nrs", "sleep_quality",
                                      "medication_taken", "side_effects")
                     if get(k) is not None}
-        parsed_nrs = get("pain_nrs", "nrs_score")
+        parsed_nrs = _normalize_nrs_value(get("pain_nrs", "nrs_score"))
         if parsed_nrs is not None and not (
             ReplyUnderstandingAgent._has_explicit_pain_score(raw, current_question)
             or ReplyUnderstandingAgent._qualitative_pain_score(raw) is not None
         ):
             parsed_nrs = None
+        emotion = _detect_emotion(raw)
         return ReplyUnderstanding(
             pain_nrs=parsed_nrs,
             sleep_quality=get("sleep_quality"),
@@ -198,8 +226,88 @@ class ReplyUnderstandingAgent:
             confidence=0.5, uncertain=True,
             ambiguity_type="none" if parsed_any else "minimal",
             evidence=evidence,
+            requires_immediate_action=emotion["state"] == "urgent",
+            emotion_state=emotion["state"],
+            emotion_intensity=emotion["intensity"],
+            emotion_evidence=emotion["evidence"],
             raw_text=raw,
         )
+
+
+def _detect_emotion(text: str) -> dict[str, str]:
+    """对当前单条患者消息做轻量规则识别，作为 LLM 的安全兜底。"""
+    text = (text or "").strip()
+    if not text:
+        return {"state": "unknown", "intensity": "low", "evidence": ""}
+
+    rules = (
+        ("urgent", "high", (
+            "我不想活了", "不想活下去", "不想活", "想自杀", "要自杀",
+            "想轻生", "轻生", "伤害自己", "伤害我自己", "自伤", "自残",
+            "自杀念头", "自杀想法", "结束生命", "活着没意义",
+        )),
+        ("distressed", "high", (
+            "崩溃", "绝望", "太痛苦了", "痛苦得受不了", "受不了了",
+            "撑不下去", "非常害怕", "情绪比较激动", "情绪很激动",
+            "非常激动", "很激动", "烦躁", "愤怒", "发脾气", "控制不住情绪",
+        )),
+        ("low", "medium", (
+            "心情不好", "情绪低落", "很难过", "难过", "沮丧", "焦虑",
+            "无助", "担心", "害怕", "心里堵得慌",
+        )),
+        ("positive", "low", (
+            "好多了", "好很多了", "心情不错", "挺开心", "很开心",
+            "高兴", "精神好多了", "恢复得不错", "有信心", "满意",
+        )),
+        ("stable", "low", (
+            "还可以", "还行", "一般", "挺好的", "很好", "比较平稳",
+            "没什么变化", "老样子",
+        )),
+    )
+    for state, intensity, phrases in rules:
+        for phrase in phrases:
+            # “睡得一般”“疼痛老样子”“按时吃药”等是在回答具体健康问题，
+            # 不能仅因为包含“一般/老样子/还行”就判断患者整体情绪平稳。
+            if state == "stable" and _has_clinical_context(text):
+                continue
+            if _has_non_negated_phrase(text, phrase):
+                return {"state": state, "intensity": intensity, "evidence": phrase}
+    return {"state": "unknown", "intensity": "low", "evidence": ""}
+
+
+def _has_clinical_context(text: str) -> bool:
+    """判断“还行/一般”等词是否只是具体症状或用药问题的回答。"""
+    return any(word in text for word in (
+        "睡", "疼", "痛", "药", "服药", "吃药", "用药", "副作用",
+        "不舒服", "小时", "入睡", "醒", "恶心", "头晕", "便秘",
+    ))
+
+
+def _has_non_negated_phrase(text: str, phrase: str) -> bool:
+    """判断文本中是否存在未被否定的目标词组。"""
+    start = 0
+    while True:
+        index = text.find(phrase, start)
+        if index < 0:
+            return False
+        if not _is_negated(text, phrase, index):
+            return True
+        start = index + len(phrase)
+
+
+def _is_negated(text: str, phrase: str, index: int | None = None) -> bool:
+    """避免将明确否定的情绪词组误判为患者当前情绪。"""
+    if index is None:
+        index = text.find(phrase)
+    if index < 0:
+        return False
+
+    prefix = text[max(0, index - 8):index]
+    negations = (
+        "并没有", "没有", "从来没有", "没有那么", "没有再", "没那么",
+        "没再", "并不", "不是", "不觉得", "没", "不", "否认",
+    )
+    return any(negation in prefix for negation in negations)
 
 
 def _keyword_parse(reply_text: str, current_question: str = "") -> dict:
@@ -212,23 +320,21 @@ def _keyword_parse(reply_text: str, current_question: str = "") -> dict:
     # 覆盖“疼痛5分”“疼痛评分是5”“5/10”“打了5分”等常见说法，
     # 但不把年龄、睡眠时长等普通数字误当成 NRS。
     m = re.search(
-        r"(?:疼痛|痛感|疼痛评分|疼痛打分|打分|评分)\s*(?:是|为|：|:)?\s*"
-        r"(10|[0-9])(?:\s*分|\s*/\s*10)?"
-        r"|(?<![\d.\-])(10|[0-9])\s*/\s*10"
-        r"|(?<![\d.\-])(10|[0-9])\s*分",
+        rf"(?:疼痛|痛感|疼痛评分|疼痛打分|打分|评分)\s*(?:是|为|：|:)?\s*"
+        rf"({_NRS_NUMBER})(?![\d.])(?:\s*分|\s*/\s*10)?"
+        rf"|(?<![\d.\-])({_NRS_NUMBER})\s*/\s*10"
+        rf"|(?<![\d.\-])({_NRS_NUMBER})\s*分(?![\d.])",
         text,
     )
     if m:
-        try:
-            score = next(int(group) for group in m.groups() if group is not None)
-            if 0 <= score <= 10:
-                nrs = score
-        except (TypeError, ValueError):
-            nrs = None
+        score_text = next(group for group in m.groups() if group is not None)
+        nrs = _normalize_nrs_value(score_text)
     if nrs is None and ReplyUnderstandingAgent._is_pain_question(current_question):
-        standalone = re.fullmatch(r"\s*(10|[0-9])\s*(?:分)?\s*[。.!！？?，,]?\s*", text)
+        standalone = re.fullmatch(
+            rf"\s*({_NRS_NUMBER})\s*(?:分)?\s*[。.!！？?，,]?\s*", text,
+        )
         if standalone:
-            nrs = int(standalone.group(1))
+            nrs = _normalize_nrs_value(standalone.group(1))
     if nrs is None:
         nrs = ReplyUnderstandingAgent._qualitative_pain_score(text)
     sleep_quality = None
@@ -238,10 +344,19 @@ def _keyword_parse(reply_text: str, current_question: str = "") -> dict:
         sleep_quality = "很差"
     elif any(w in text for w in ("没睡好", "睡不好", "睡得不好")):
         sleep_quality = "差"
-    elif re.search(r"睡了\s*[7-9]\s*(?:个)?小时", text):
-        sleep_quality = "好"
-    elif "睡" in text:
-        sleep_quality = "一般"
+    else:
+        sleep_hours = _extract_sleep_hours(text)
+        if sleep_hours is not None:
+            if sleep_hours <= 2:
+                sleep_quality = "很差"
+            elif sleep_hours <= 4:
+                sleep_quality = "差"
+            elif sleep_hours <= 6:
+                sleep_quality = "一般"
+            else:
+                sleep_quality = "好"
+        elif "睡" in text:
+            sleep_quality = "一般"
     medication_taken = None
     if any(w in text for w in ("没吃药", "没有吃药", "忘了吃", "忘记吃", "没吃", "不吃", "停药")):
         medication_taken = False
@@ -262,3 +377,47 @@ def _keyword_parse(reply_text: str, current_question: str = "") -> dict:
         side_effects = "无"
     return {"pain_nrs": nrs, "sleep_quality": sleep_quality,
             "medication_taken": medication_taken, "side_effects": side_effects}
+
+
+def _extract_sleep_hours(text: str) -> float | None:
+    """提取“睡了5个小时/睡了两个小时”等表达。"""
+    match = re.search(
+        r"(?:睡了|睡眠|总共睡|睡够|睡了大概)\s*"
+        r"([0-9]+(?:\.[0-9]+)?|[一二两三四五六七八九十]+)\s*(?:个)?小时",
+        text,
+    )
+    if not match:
+        return None
+    value = match.group(1)
+    if re.fullmatch(r"[0-9]+(?:\.[0-9]+)?", value):
+        return float(value)
+    chinese_digits = {
+        "一": 1, "二": 2, "两": 2, "三": 3, "四": 4, "五": 5,
+        "六": 6, "七": 7, "八": 8, "九": 9, "十": 10,
+    }
+    if value == "十":
+        return 10.0
+    if value.startswith("十"):
+        return 10.0 + chinese_digits.get(value[1:], 0)
+    if value.endswith("十"):
+        return chinese_digits.get(value[:-1], 0) * 10.0
+    if len(value) == 2 and value[1] == "十":
+        return chinese_digits.get(value[0], 0) * 10.0
+    if len(value) == 2 and value[0] == "十":
+        return 10.0 + chinese_digits.get(value[1], 0)
+    if len(value) == 1:
+        return float(chinese_digits.get(value, 0))
+    return None
+
+
+def _sleep_quality_from_hours(text: str) -> str | None:
+    hours = _extract_sleep_hours(text or "")
+    if hours is None:
+        return None
+    if hours <= 2:
+        return "很差"
+    if hours <= 4:
+        return "差"
+    if hours <= 6:
+        return "一般"
+    return "好"

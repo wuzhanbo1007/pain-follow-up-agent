@@ -10,12 +10,13 @@ from dataclasses import dataclass
 
 from prompts.prompt_spec import PromptSpec
 
-PROMPT_VERSION = "compose-greeting-v1"
+PROMPT_VERSION = "compose-greeting-v2-address"
 
 
 @dataclass
 class GreetingContext:
     patient_name: str = ""
+    patient_address: str = ""
     age: int | None = None
     gender: str = ""
     diagnosis: str = ""
@@ -43,7 +44,8 @@ def build_prompt(ctx: GreetingContext) -> PromptSpec:
     system = f"""你是一个慢性疼痛随访智能体。请为患者生成一条个性化的微信随访开场白。
 
 ## 患者信息
-- 姓名：{ctx.patient_name}
+- 患者姓名（仅用于识别，不得在对话中直接使用全名）：{ctx.patient_name}
+- 本次必须使用的自然称呼：{ctx.patient_address or "患者"}
 - 年龄：{ctx.age}
 - 诊断：{ctx.diagnosis}
 - 医院：{ctx.hospital_name}
@@ -60,7 +62,7 @@ def build_prompt(ctx: GreetingContext) -> PromptSpec:
 像一位日常随访的护士，亲切自然地询问恢复情况。
 
 ## 生成要求
-1. 根据年龄选择称呼：年长（>50岁）可用"阿姨""叔叔"等亲切称呼，其余用"您"。
+1. 必须使用“{ctx.patient_address or "患者"}”称呼患者，禁止直接称呼患者全名；不要自行改成其他称呼。
 2. 结构：①称呼患者 ②自我介绍（我是{ctx.hospital_name}{ctx.department_name}的医生{ctx.doctor_name}）
    ③就医背景（您此前因{ctx.diagnosis}在我院就诊/住院）④说明来意 ⑤一句人文关怀
    ⑥以一句自然问句结尾，询问今天的情况，让患者愿意回应。

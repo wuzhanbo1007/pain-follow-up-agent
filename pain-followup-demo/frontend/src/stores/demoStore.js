@@ -708,8 +708,27 @@ export const useDemoStore = defineStore('demo', () => {
 
   function startDispatch() {
     reset()
+    if (!wsConnected.value) {
+      agentState.value = { name: 'ERROR', label: 'WebSocket 未连接，请稍后重试' }
+      addLog({
+        message: '启动随访失败：WebSocket 尚未连接',
+        state: 'error',
+        log_key: 'dispatch-start-not-connected',
+      })
+      return false
+    }
     phase.value = 'running'
-    send('dispatch:start', { scope: 'ward-A' })
+    const sent = send('dispatch:start', { scope: 'ward-A' })
+    if (!sent) {
+      phase.value = 'idle'
+      agentState.value = { name: 'ERROR', label: '随访启动失败，请重试' }
+      addLog({
+        message: '启动随访失败：无法发送 dispatch:start',
+        state: 'error',
+        log_key: 'dispatch-start-send-failed',
+      })
+    }
+    return sent
   }
 
   function resumeEpisode(episodeId, text) {

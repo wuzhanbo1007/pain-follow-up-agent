@@ -131,6 +131,7 @@ class PatientState(TypedDict, total=False):
     simulator_target_slot: str | None       # 本轮患者模拟器回答的槽位
     simulator_reply_meta: dict              # 模拟回复来源/校验元数据
     early_summary: str                      # 滚动摘要
+    history_summary_message_count: int       # 已纳入滚动摘要的消息数量
 
 
 class ConversationState(TypedDict, total=False):
@@ -152,6 +153,7 @@ class ConversationState(TypedDict, total=False):
     risk_result: dict
     turn_decision: dict
     early_summary: str
+    history_summary_message_count: int
 
 
 class ReviewState(TypedDict, total=False):
