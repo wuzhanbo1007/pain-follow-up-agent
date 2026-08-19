@@ -134,9 +134,9 @@
                 :key="i"
                 class="flex items-center justify-between py-1.5 px-3 rounded-lg bg-gray-50"
               >
-                <div class="min-w-0">
-                  <div class="text-xs text-gray-700">{{ p.name }}</div>
-                  <div class="text-xs text-gray-400 truncate">· {{ p.diagnosis || '未填写诊断' }}</div>
+                <div class="flex items-center gap-1 min-w-0 truncate">
+                  <span class="text-xs text-gray-700 shrink-0">{{ p.name }}</span>
+                  <span class="text-xs text-gray-400 truncate">· {{ p.diagnosis || '未填写诊断' }}</span>
                 </div>
                 <div class="flex items-center gap-2">
                   <span

@@ -93,7 +93,8 @@ def is_llm_available() -> bool:
     return bool(HAS_OPENAI and LLM_API_KEY)
 
 
-async def chat(messages, *, temperature=0.7, response_format=None, max_tokens=None) -> str:
+async def chat(messages, *, temperature=0.7, response_format=None,
+               max_tokens=None, extra_body=None) -> str:
     """便捷调用：异步返回模型文本（已 strip）。
 
     底层统一走 llm.model.achat_completion（ChatOpenAI → 内部 AsyncOpenAI），
@@ -101,7 +102,7 @@ async def chat(messages, *, temperature=0.7, response_format=None, max_tokens=No
 
     Args:
         messages: [{"role": "system"/"user"/"assistant", "content": "..."}]
-        temperature / response_format / max_tokens: 透传给 Chat Model
+        temperature / response_format / max_tokens / extra_body: 透传给 Chat Model
     Returns:
         str: 模型回复文本（strip 后）
     """
@@ -112,6 +113,7 @@ async def chat(messages, *, temperature=0.7, response_format=None, max_tokens=No
         temperature=temperature,
         response_format=response_format,
         max_tokens=max_tokens,
+        extra_body=extra_body,
     )
 
 

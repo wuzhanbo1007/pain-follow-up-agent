@@ -26,29 +26,39 @@ T = TypeVar("T")
 class LLMProfile:
     """按用途的模型调用 profile。"""
     def __init__(self, *, temperature: float = 0.5, max_tokens: int | None = None,
-                 response_format: dict | None = None, timeout: int | None = None):
+                 response_format: dict | None = None, timeout: int | None = None,
+                 thinking: bool = False):
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.response_format = response_format
         self.timeout = timeout
+        self.chat_template_kwargs = {"enable_thinking": thinking}
 
 
 # 预置 profile（说明书：每个 Agent 有唯一输入/输出 Schema 与一个提示词文件）
 PROFILES: dict[str, LLMProfile] = {
-    "understand_reply": LLMProfile(temperature=0.2),
-    "compose_question": LLMProfile(temperature=0.6),
-    "compose_greeting": LLMProfile(temperature=0.7),
-    "compose_farewell": LLMProfile(temperature=0.5),
-    "summarize_history": LLMProfile(temperature=0.3, max_tokens=400),
+    "understand_reply": LLMProfile(temperature=0.2, thinking=False),
+    "compose_question": LLMProfile(temperature=0.6, thinking=False),
+    "compose_greeting": LLMProfile(temperature=0.7, thinking=False),
+    "compose_farewell": LLMProfile(temperature=0.5, thinking=False),
+    "summarize_history": LLMProfile(temperature=0.3, max_tokens=400, thinking=False),
     # 患者模拟需要事实一致和槽位命中，使用较低温度并限制输出长度。
     # Qwen3.6-35B 会把较多 completion token 用于推理；100 会在输出 JSON 前
     # 以 finish_reason=length 结束，导致 message.content 为空。
-    "patient_simulator": LLMProfile(temperature=0.45, max_tokens=12000,
-                                     response_format={"type": "json_object"}),
-    "ai_review": LLMProfile(temperature=0.2, response_format={"type": "json_object"}),
-    "policy_compiler": LLMProfile(temperature=0.0, response_format={"type": "json_object"}),
-    "plan_generation": LLMProfile(temperature=0.4),
-    "default": LLMProfile(temperature=0.5),
+    "patient_simulator": LLMProfile(
+        temperature=0.45, max_tokens=12000,
+        response_format={"type": "json_object"}, thinking=False,
+    ),
+    # AIReviewAgent 开启 Qwen 思考模式，用于审阅和风险判断。
+    "ai_review": LLMProfile(
+        temperature=0.2, response_format={"type": "json_object"}, thinking=True,
+    ),
+    "policy_compiler": LLMProfile(
+        temperature=0.0, response_format={"type": "json_object"}, thinking=False,
+    ),
+    # PlannerAgent 通过 PlanGenerationAgent 使用此 profile，开启思考模式。
+    "plan_generation": LLMProfile(temperature=0.4, thinking=True),
+    "default": LLMProfile(temperature=0.5, thinking=False),
 }
 
 
@@ -80,6 +90,7 @@ class LLMGateway:
             temperature=temperature if temperature is not None else p.temperature,
             response_format=response_format if response_format is not None else p.response_format,
             max_tokens=max_tokens if max_tokens is not None else p.max_tokens,
+            extra_body={"chat_template_kwargs": p.chat_template_kwargs},
         )
 
     async def chat_json(self, messages: list[dict], *, profile: str = "default",
@@ -96,6 +107,7 @@ class LLMGateway:
                 temperature=temperature if temperature is not None else p.temperature,
                 response_format=fmt,
                 max_tokens=p.max_tokens,
+                extra_body={"chat_template_kwargs": p.chat_template_kwargs},
             )
             return parse_json_safe(raw)
         except Exception as exc:
